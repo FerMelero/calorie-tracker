@@ -63,3 +63,13 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
+
+/** Color principal de la app (botones, selección, tarjeta del total del día). */
+export const Accent = '#2E9E6B';
+
+/** Un color por macro, para reconocerlas de un vistazo en toda la app. */
+export const MacroColors = {
+  protein: '#3E7BFA',
+  carbs: '#F5A524',
+  fat: '#A855F7',
+} as const;

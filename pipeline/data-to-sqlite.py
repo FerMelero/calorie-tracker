@@ -24,6 +24,7 @@ Ejecutar desde la carpeta pipeline/.
 # │ sugars    │ REAL                 │ azucares (puede ser NULL)                   │
 # │ fiber     │ REAL                 │ fibra (puede ser NULL)                      │
 # │ salt      │ REAL                 │ sal (puede ser NULL)                        │
+# │ search_text│ TEXT NOT NULL       │ nombre + marca, minúsculas y sin tildes     │
 # └───────────┴──────────────────────┴─────────────────────────────────────────────┘
 #
 # Tabla foods_fts (índice de búsqueda de texto, FTS5)
@@ -43,7 +44,8 @@ CREATE TABLE foods (
     fat      REAL NOT NULL,
     sugars   REAL,
     fiber    REAL,
-    salt     REAL
+    salt     REAL,
+    search_text TEXT NOT NULL
 );
 
 CREATE VIRTUAL TABLE foods_fts USING fts5(

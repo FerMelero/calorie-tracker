@@ -7,6 +7,7 @@ Ejecutar desde la carpeta pipeline/:  python 02_build_db.py
 
 import os
 import sqlite3
+import unicodedata
 
 import pandas as pd
 
@@ -31,7 +32,8 @@ CREATE TABLE foods (
     fat      REAL NOT NULL,
     sugars   REAL,
     fiber    REAL,
-    salt     REAL
+    salt     REAL,
+    search_text TEXT NOT NULL  -- nombre + marca en minúsculas y sin tildes, para búsquedas LIKE
 );
 
 CREATE VIRTUAL TABLE foods_fts USING fts5(
@@ -42,6 +44,12 @@ CREATE VIRTUAL TABLE foods_fts USING fts5(
 """
 
 NUTRIENTES = ["kcal", "proteinas", "carbohidratos", "grasas", "azucares", "fibra", "sal"]
+
+
+def normalizar(texto: str) -> str:
+    """Minúsculas y sin tildes (ñ -> n). Debe coincidir con normalize() de app/src/db/search.ts."""
+    sin_tildes = "".join(c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn")
+    return sin_tildes.lower()
 
 
 def limpiar(df: pd.DataFrame) -> pd.DataFrame:
@@ -103,15 +111,16 @@ def crear_db(df: pd.DataFrame) -> None:
     filas = df.astype(object).where(df.notna(), None)
     registros = [
         (r.code, r.nombre, r.brands, r.kcal, r.proteinas, r.carbohidratos,
-         r.grasas, r.azucares, r.fibra, r.sal)
+         r.grasas, r.azucares, r.fibra, r.sal,
+         normalizar(f"{r.nombre} {r.brands or ''}".strip()))
         for r in filas.itertuples(index=False)
     ]
 
     con = sqlite3.connect(DB)
     con.executescript(SCHEMA)
     con.executemany(
-        "INSERT INTO foods (barcode, name, brand, kcal, protein, carbs, fat, sugars, fiber, salt)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO foods (barcode, name, brand, kcal, protein, carbs, fat, sugars, fiber, salt, search_text)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         registros,
     )
     # Rellena el índice de búsqueda a partir de la tabla foods

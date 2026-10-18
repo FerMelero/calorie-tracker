@@ -27,6 +27,11 @@ export default function AppTabs() {
           renderingMode="template"
         />
       </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="goals">
+        <NativeTabs.Trigger.Label>Objetivos</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="flag.fill" md="flag" />
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }

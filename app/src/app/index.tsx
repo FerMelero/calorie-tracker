@@ -9,6 +9,7 @@ import { MacroPills } from '@/components/macro-pills';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, Spacing } from '@/constants/theme';
+import { getGoals, type Goals } from '@/db/goals';
 import { deleteEntry, getEntries, MEALS, sumTotals, todayISO, type Entry } from '@/db/user';
 
 const MEAL_ICONS: Record<string, string> = {
@@ -21,10 +22,12 @@ const MEAL_ICONS: Record<string, string> = {
 
 export default function HoyScreen() {
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [goals, setGoals] = useState<Goals | null>(null);
   const date = todayISO();
 
   const load = useCallback(async () => {
     setEntries(await getEntries(date));
+    setGoals(await getGoals());
   }, [date]);
 
   // Recarga cada vez que se abre la pestaña (por si se ha añadido algo desde Buscar)
@@ -59,11 +62,35 @@ export default function HoyScreen() {
             <View style={styles.kcalRow}>
               <ThemedText style={styles.kcalValue}>{total.kcal}</ThemedText>
               <ThemedText type="default" style={styles.onAccentMuted}>
-                kcal
+                {goals ? `/ ${goals.kcal} kcal` : 'kcal'}
               </ThemedText>
             </View>
+            {goals ? (
+              <>
+                <View style={styles.progressTrack}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${Math.min(100, (total.kcal / goals.kcal) * 100)}%`,
+                        backgroundColor: total.kcal > goals.kcal ? '#FFB4A2' : '#ffffff',
+                      },
+                    ]}
+                  />
+                </View>
+                <ThemedText type="small" style={styles.onAccentMuted}>
+                  {total.kcal > goals.kcal
+                    ? `Te has pasado ${total.kcal - goals.kcal} kcal`
+                    : `Te quedan ${goals.kcal - total.kcal} kcal`}
+                </ThemedText>
+              </>
+            ) : (
+              <ThemedText type="small" style={styles.onAccentMuted}>
+                Define tus objetivos en la pestaña Objetivos.
+              </ThemedText>
+            )}
             <MacroBar {...total} />
-            <MacroPills {...total} textColor="#ffffff" />
+            <MacroPills {...total} textColor="#ffffff" goal={goals} />
           </View>
 
           {MEALS.map((meal, index) => {
@@ -121,6 +148,8 @@ const styles = StyleSheet.create({
   content: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },
   totalCard: { borderRadius: 24, padding: Spacing.four, gap: Spacing.three },
   onAccentMuted: { color: 'rgba(255,255,255,0.8)' },
+  progressTrack: { height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.25)' },
+  progressFill: { height: 10, borderRadius: 5 },
   kcalRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two },
   kcalValue: { color: '#ffffff', fontSize: 52, lineHeight: 58, fontWeight: 700 },
   card: { borderRadius: 18, padding: Spacing.three, gap: Spacing.two },

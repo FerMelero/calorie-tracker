@@ -34,7 +34,7 @@ export type Entry = {
   salt: number | null;
 };
 
-const USER_DB_VERSION = 1;
+const USER_DB_VERSION = 2;
 
 let db: SQLiteDatabase | null = null;
 
@@ -70,6 +70,28 @@ function migrate(database: SQLiteDatabase) {
         salt       REAL
       );
       CREATE INDEX entries_date ON entries (date);
+    `);
+  }
+  if (current < 2) {
+    // Una sola fila (id = 1): los objetivos de quien usa este móvil
+    database.execSync(`
+      CREATE TABLE goals (
+        id            INTEGER PRIMARY KEY CHECK (id = 1),
+        mode          TEXT NOT NULL,
+        sex           TEXT,
+        age           REAL,
+        weight_kg     REAL,
+        height_cm     REAL,
+        activity      TEXT,
+        objective     TEXT,
+        adjust_pct    REAL,
+        protein_per_kg REAL,
+        fat_pct       REAL,
+        kcal          REAL NOT NULL,
+        protein       REAL NOT NULL,
+        carbs         REAL NOT NULL,
+        fat           REAL NOT NULL
+      );
     `);
   }
   database.execSync(`PRAGMA user_version = ${USER_DB_VERSION}`);

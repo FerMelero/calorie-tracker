@@ -17,6 +17,7 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 - ✅ Pipeline: filtra Open Food Facts (España) y genera `foods.db` (~185 000 alimentos, ~28 MB) con búsqueda de texto.
 - ✅ Buscar: búsqueda en español, sin importar mayúsculas ni tildes, con porcentaje de parecido. Los resultados salen de 10 en 10 (botón "Ver más").
 - ✅ Hoy: diario del día con 5 franjas (desayuno, comida, snacks, merienda, cena), total del día y total por franja.
+- ✅ Objetivos: el usuario elige sus kcal y macros o los calcula con Mifflin-St Jeor (sexo, edad, peso, altura, actividad y objetivo). Hoy muestra el progreso frente al objetivo.
 - ⏳ Pendiente: selector de fecha, editar cantidades, alimentos propios, recetas, genéricos de BEDCA, exportar/importar datos.
 
 ## Estructura del repo
@@ -27,15 +28,19 @@ calorie-tracker/
 │   ├── src/app/                #   Pantallas (cada archivo es una pantalla/ruta)
 │   │   ├── _layout.tsx         #     Abre foods.db y monta las pestañas
 │   │   ├── index.tsx           #     Pestaña "Hoy": diario, franjas y totales
-│   │   └── explore.tsx         #     Pestaña "Buscar": búsqueda de alimentos
+│   │   ├── explore.tsx         #     Pestaña "Buscar": búsqueda de alimentos
+│   │   └── goals.tsx           #     Pestaña "Objetivos": calcular o elegir kcal y macros
 │   ├── src/components/         #   Piezas reutilizables
 │   │   ├── app-tabs.tsx        #     Barra de pestañas de abajo
 │   │   ├── add-food-modal.tsx  #     Ventana para elegir franja y gramos al añadir
 │   │   ├── macro-pills.tsx     #     Etiquetas de proteínas / carbos / grasas
-│   │   └── macro-bar.tsx       #     Barra con el reparto de macros
+│   │   ├── macro-bar.tsx       #     Barra con el reparto de macros
+│   │   └── form-controls.tsx   #     Botones de elección, campos numéricos y botones − / +
 │   ├── src/db/                 #   Acceso a datos
 │   │   ├── search.ts           #     Búsqueda en foods.db (FTS5 + LIKE + parecido)
-│   │   └── user.ts             #     user.db: diario, migraciones, totales
+│   │   ├── user.ts             #     user.db: diario, migraciones, totales
+│   │   └── goals.ts            #     Guardar y leer los objetivos del usuario
+│   ├── src/lib/nutrition.ts    #   Fórmula de Mifflin-St Jeor y reparto de macros (funciones puras)
 │   ├── src/constants/theme.ts  #   Colores, espacios y colores de los macros
 │   └── assets/db/foods.db      #   Base de alimentos (NO se sube a git; copiar desde pipeline)
 ├── pipeline/                   # Fábrica de datos: solo se ejecuta en el PC
@@ -57,6 +62,7 @@ calorie-tracker/
 | Cambiar la pantalla de búsqueda | `app/src/app/explore.tsx` |
 | Cambiar la pantalla del día | `app/src/app/index.tsx` |
 | Guardar algo nuevo en el diario (campos, tablas) | `app/src/db/user.ts` (nueva migración subiendo `USER_DB_VERSION`) |
+| Cambiar la fórmula de objetivos o sus rangos | `app/src/lib/nutrition.ts` |
 | Cambiar colores o espacios | `app/src/constants/theme.ts` |
 | Añadir o renombrar una pestaña | un archivo en `app/src/app/` + `app/src/components/app-tabs.tsx` |
 
@@ -105,6 +111,7 @@ Ejecuta lint y typecheck antes de dar una tarea por terminada. (`expo lint` da h
 
 - **`foods.db`** (solo lectura, viene empaquetada en la app): tabla `foods` con los valores **por 100 g** y `foods_fts`, el índice de búsqueda. Los datos que no existen se dejan como `NULL`, no como 0.
 - **`user.db`** (se crea en el móvil): tabla `entries` con lo que comes. Cada registro guarda los nutrientes ya calculados para los gramos tomados, así el histórico no cambia aunque cambie `foods.db`.
+- **Objetivos:** una sola fila en `user.db` (tabla `goals`). No hay cuentas: los objetivos pertenecen a quien usa ese móvil. Guarda tanto el resultado (kcal y macros) como los datos del cálculo, para poder editarlos después.
 - **Búsqueda:** el texto se pasa a minúsculas y sin tildes. Primero busca palabras que empiezan por lo escrito (FTS5, muy rápido) y luego lo escrito dentro de cualquier palabra (LIKE). Cada resultado recibe un porcentaje de parecido y se ordenan de mayor a menor. Solo funciona en español y no corrige erratas.
 
 ## Plan de trabajo y ramas

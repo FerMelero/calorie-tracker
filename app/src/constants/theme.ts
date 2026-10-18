@@ -9,18 +9,18 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#111418',
+    background: '#F4F5F2',
+    backgroundElement: '#FFFFFF',
+    backgroundSelected: '#E7E9E4',
+    textSecondary: '#6B7078',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#F5F6F7',
+    background: '#0B0C0E',
+    backgroundElement: '#17191C',
+    backgroundSelected: '#24272B',
+    textSecondary: '#9CA1A9',
   },
 } as const;
 
@@ -66,6 +66,9 @@ export const MaxContentWidth = 800;
 
 /** Color principal de la app (botones, selección, tarjeta del total del día). */
 export const Accent = '#2E9E6B';
+
+/** Degradado de la tarjeta principal (de arriba-izquierda a abajo-derecha). */
+export const AccentGradient = ['#3CC48A', '#1F8A5E'] as const;
 
 /** Un color por macro, para reconocerlas de un vistazo en toda la app. */
 export const MacroColors = {

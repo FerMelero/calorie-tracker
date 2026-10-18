@@ -17,7 +17,7 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 - ✅ Pipeline: filtra Open Food Facts (España) y genera `foods.db` (~185 000 alimentos, ~28 MB) con búsqueda de texto.
 - ✅ Buscar: búsqueda en español, sin importar mayúsculas ni tildes, con porcentaje de parecido. Los resultados salen de 10 en 10 (botón "Ver más").
 - ✅ Hoy: diario del día con 5 franjas (desayuno, comida, snacks, merienda, cena), total del día y total por franja.
-- ✅ Objetivos: el usuario elige sus kcal y macros o los calcula con Mifflin-St Jeor (sexo, edad, peso, altura, actividad y objetivo). Hoy muestra el progreso frente al objetivo.
+- ✅ Objetivos: el usuario elige sus kcal y macros o los calcula con Mifflin-St Jeor (sexo, edad, peso, altura, actividad y objetivo). Hoy muestra el progreso frente al objetivo y cada franja tiene un botón + que abre Buscar con esa franja ya elegida.
 - ⏳ Pendiente: selector de fecha, editar cantidades, alimentos propios, recetas, genéricos de BEDCA, exportar/importar datos.
 
 ## Estructura del repo
@@ -35,7 +35,10 @@ calorie-tracker/
 │   │   ├── add-food-modal.tsx  #     Ventana para elegir franja y gramos al añadir
 │   │   ├── macro-pills.tsx     #     Etiquetas de proteínas / carbos / grasas
 │   │   ├── macro-bar.tsx       #     Barra con el reparto de macros
-│   │   └── form-controls.tsx   #     Botones de elección, campos numéricos y botones − / +
+│   │   ├── form-controls.tsx   #     Botones de elección, campos numéricos y botones − / +
+│   │   ├── card.tsx            #     Tarjeta base (fondo, esquinas y sombra suave)
+│   │   ├── button.tsx          #     Botón principal / con borde
+│   │   └── macro-progress.tsx  #     Macros consumidos frente al objetivo, con barras
 │   ├── src/db/                 #   Acceso a datos
 │   │   ├── search.ts           #     Búsqueda en foods.db (FTS5 + LIKE + parecido)
 │   │   ├── user.ts             #     user.db: diario, migraciones, totales

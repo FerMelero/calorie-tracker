@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { Button } from '@/components/button';
 import { MacroPills } from '@/components/macro-pills';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -11,13 +12,15 @@ import { useTheme } from '@/hooks/use-theme';
 
 type Props = {
   food: Food | null;
+  /** Franja preseleccionada (si se viene desde el botón + de una franja) */
+  defaultMeal?: MealKey;
   onClose: () => void;
 };
 
 /** Ventana para elegir franja y cantidad antes de añadir un alimento al diario de hoy. */
-export function AddFoodModal({ food, onClose }: Props) {
+export function AddFoodModal({ food, defaultMeal, onClose }: Props) {
   const theme = useTheme();
-  const [meal, setMeal] = useState<MealKey>('desayuno');
+  const [meal, setMeal] = useState<MealKey>(defaultMeal ?? 'desayuno');
   const [gramsText, setGramsText] = useState('100');
 
   const grams = Number(gramsText.replace(',', '.'));
@@ -82,12 +85,9 @@ export function AddFoodModal({ food, onClose }: Props) {
               style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
             />
 
-            <Pressable
-              onPress={add}
-              disabled={!valid}
-              style={[styles.button, { backgroundColor: Accent, opacity: valid ? 1 : 0.4 }]}>
-              <ThemedText type="smallBold" style={{ color: '#ffffff' }}>Añadir</ThemedText>
-            </Pressable>
+            <View style={styles.buttonRow}>
+              <Button label="Añadir a mi día" onPress={add} disabled={!valid} />
+            </View>
           </ThemedView>
         </Pressable>
       </Pressable>
@@ -100,15 +100,15 @@ const styles = StyleSheet.create({
   sheet: {
     padding: Spacing.four,
     gap: Spacing.two,
-    borderTopLeftRadius: Spacing.four,
-    borderTopRightRadius: Spacing.four,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
   },
   foodName: { fontSize: 20, lineHeight: 26, fontWeight: 700 },
   preview: { borderRadius: 14, padding: Spacing.three, gap: Spacing.one, marginVertical: Spacing.one },
   previewKcal: { fontSize: 24, lineHeight: 30, fontWeight: 700 },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(128,128,128,0.5)', marginBottom: Spacing.one },
+  buttonRow: { marginTop: Spacing.two },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   chip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 99 },
   input: { borderRadius: 14, padding: Spacing.three, fontSize: 16 },
-  button: { alignItems: 'center', padding: Spacing.three, borderRadius: 14, marginTop: Spacing.two },
 });

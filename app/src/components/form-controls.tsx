@@ -105,14 +105,15 @@ export function Stepper({ label, valueText, onMinus, onPlus, hint }: StepperProp
 
 const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  chip: { borderRadius: 14, paddingHorizontal: Spacing.three, paddingVertical: 10 },
+  chip: { borderRadius: 99, paddingHorizontal: Spacing.three, paddingVertical: 10, boxShadow: '0 1px 6px rgba(0, 0, 0, 0.05)' },
   field: { flex: 1, minWidth: 100, gap: Spacing.one },
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: 16,
     paddingHorizontal: Spacing.three,
     gap: Spacing.one,
+    boxShadow: '0 1px 6px rgba(0, 0, 0, 0.05)',
   },
   input: { flex: 1, paddingVertical: 12, fontSize: 16 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },

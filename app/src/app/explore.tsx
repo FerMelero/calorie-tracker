@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -5,11 +6,14 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddFoodModal } from '@/components/add-food-modal';
+import { Button } from '@/components/button';
+import { Card } from '@/components/card';
 import { MacroPills } from '@/components/macro-pills';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, Spacing } from '@/constants/theme';
 import { searchFoods, type FoodResult } from '@/db/search';
+import { MEALS } from '@/db/user';
 import { useTheme } from '@/hooks/use-theme';
 
 const DEBOUNCE_MS = 250;
@@ -17,6 +21,8 @@ const PAGE_SIZE = 10;
 
 export default function BuscarScreen() {
   const db = useSQLiteContext();
+  const { meal } = useLocalSearchParams<{ meal?: string }>();
+  const mealFromHome = MEALS.find((m) => m.key === meal)?.key;
   const theme = useTheme();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodResult[]>([]);
@@ -65,7 +71,13 @@ export default function BuscarScreen() {
             ) : null}
           </View>
 
-          <View style={[styles.notice, { backgroundColor: theme.backgroundElement }]}>
+          {mealFromHome ? (
+            <ThemedText type="smallBold" style={{ color: Accent }}>
+              Añadiendo a {MEALS.find((m) => m.key === mealFromHome)?.label}
+            </ThemedText>
+          ) : null}
+
+          <View style={[styles.notice, { backgroundColor: theme.backgroundSelected }]}>
             <ThemedText type="small" themeColor="textSecondary">
               🇪🇸 Busca en español. Todavía no hay soporte para búsquedas en inglés.
             </ThemedText>
@@ -97,16 +109,13 @@ export default function BuscarScreen() {
           }
           ListFooterComponent={
             visible < results.length ? (
-              <Pressable
-                onPress={() => setVisible((v) => v + PAGE_SIZE)}
-                style={({ pressed }) => [
-                  styles.moreButton,
-                  { borderColor: Accent, opacity: pressed ? 0.6 : 1 },
-                ]}>
-                <ThemedText type="smallBold" style={{ color: Accent }}>
-                  Ver {Math.min(PAGE_SIZE, results.length - visible)} más
-                </ThemedText>
-              </Pressable>
+              <View style={styles.moreButton}>
+                <Button
+                  variant="outline"
+                  label={`Ver ${Math.min(PAGE_SIZE, results.length - visible)} más`}
+                  onPress={() => setVisible((v) => v + PAGE_SIZE)}
+                />
+              </View>
             ) : null
           }
           renderItem={({ item, index }) => (
@@ -114,7 +123,7 @@ export default function BuscarScreen() {
               <Pressable
                 onPress={() => setSelected(item)}
                 style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-                <ThemedView type="backgroundElement" style={styles.card}>
+                <Card>
                   <View style={styles.cardTop}>
                     <View style={styles.cardTitle}>
                       <ThemedText type="smallBold" numberOfLines={2}>
@@ -142,13 +151,13 @@ export default function BuscarScreen() {
                       {item.similarity} % parecido · por 100 g
                     </ThemedText>
                   </View>
-                </ThemedView>
+                </Card>
               </Pressable>
             </Animated.View>
           )}
         />
       </SafeAreaView>
-      <AddFoodModal key={selected?.id} food={selected} onClose={() => setSelected(null)} />
+      <AddFoodModal key={selected?.id} food={selected} defaultMeal={mealFromHome} onClose={() => setSelected(null)} />
     </ThemedView>
   );
 }
@@ -161,8 +170,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    borderRadius: 16,
+    borderRadius: 18,
     paddingHorizontal: Spacing.three,
+    boxShadow: '0 2px 12px rgba(0, 0, 0, 0.06)',
   },
   searchIcon: { fontSize: 16 },
   input: { flex: 1, paddingVertical: 14, fontSize: 16 },
@@ -171,7 +181,6 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', gap: Spacing.two, marginTop: Spacing.five },
   emptyEmoji: { fontSize: 48, lineHeight: 56 },
   emptyText: { textAlign: 'center', maxWidth: 260 },
-  card: { borderRadius: 18, padding: Spacing.three, gap: Spacing.two },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three },
   cardTitle: { flex: 1 },
   kcalBox: { alignItems: 'center', backgroundColor: Accent, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, minWidth: 60 },
@@ -180,5 +189,5 @@ const styles = StyleSheet.create({
   similarityRow: { gap: 4 },
   similarityTrack: { height: 4, borderRadius: 2, backgroundColor: 'rgba(128,128,128,0.25)', overflow: 'hidden' },
   similarityFill: { height: 4, borderRadius: 2, backgroundColor: Accent },
-  moreButton: { alignItems: 'center', borderWidth: 1.5, borderRadius: 14, padding: Spacing.three, marginTop: Spacing.one },
+  moreButton: { marginTop: Spacing.one },
 });

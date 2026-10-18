@@ -1,16 +1,19 @@
-import { useFocusEffect } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { MacroBar } from '@/components/macro-bar';
+import { Card } from '@/components/card';
 import { MacroPills } from '@/components/macro-pills';
+import { MacroProgress } from '@/components/macro-progress';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Spacing } from '@/constants/theme';
+import { AccentGradient, Spacing } from '@/constants/theme';
 import { getGoals, type Goals } from '@/db/goals';
 import { deleteEntry, getEntries, MEALS, sumTotals, todayISO, type Entry } from '@/db/user';
+import { useTheme } from '@/hooks/use-theme';
 
 const MEAL_ICONS: Record<string, string> = {
   desayuno: '🥐',
@@ -20,7 +23,18 @@ const MEAL_ICONS: Record<string, string> = {
   cena: '🌙',
 };
 
+/** "martes, 21 de octubre" */
+function formatToday(): string {
+  const text = new Date().toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 export default function HoyScreen() {
+  const theme = useTheme();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [goals, setGoals] = useState<Goals | null>(null);
   const date = todayISO();
@@ -43,28 +57,34 @@ export default function HoyScreen() {
   }
 
   const total = sumTotals(entries);
+  const over = goals !== null && total.kcal > goals.kcal;
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View>
-            <ThemedText type="subtitle">Hoy</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              {date}
+              {formatToday()}
             </ThemedText>
+            <ThemedText type="subtitle">Hoy</ThemedText>
           </View>
 
-          <View style={[styles.totalCard, { backgroundColor: Accent }]}>
+          <LinearGradient
+            colors={AccentGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.totalCard}>
             <ThemedText type="smallBold" style={styles.onAccentMuted}>
-              TOTAL DEL DÍA
+              CALORÍAS DE HOY
             </ThemedText>
             <View style={styles.kcalRow}>
               <ThemedText style={styles.kcalValue}>{total.kcal}</ThemedText>
-              <ThemedText type="default" style={styles.onAccentMuted}>
+              <ThemedText style={styles.onAccentMuted}>
                 {goals ? `/ ${goals.kcal} kcal` : 'kcal'}
               </ThemedText>
             </View>
+
             {goals ? (
               <>
                 <View style={styles.progressTrack}>
@@ -73,66 +93,82 @@ export default function HoyScreen() {
                       styles.progressFill,
                       {
                         width: `${Math.min(100, (total.kcal / goals.kcal) * 100)}%`,
-                        backgroundColor: total.kcal > goals.kcal ? '#FFB4A2' : '#ffffff',
+                        backgroundColor: over ? '#FFB4A2' : '#ffffff',
                       },
                     ]}
                   />
                 </View>
                 <ThemedText type="small" style={styles.onAccentMuted}>
-                  {total.kcal > goals.kcal
+                  {over
                     ? `Te has pasado ${total.kcal - goals.kcal} kcal`
                     : `Te quedan ${goals.kcal - total.kcal} kcal`}
                 </ThemedText>
+                <MacroProgress protein={total.protein} carbs={total.carbs} fat={total.fat} goal={goals} />
               </>
             ) : (
-              <ThemedText type="small" style={styles.onAccentMuted}>
-                Define tus objetivos en la pestaña Objetivos.
-              </ThemedText>
+              <>
+                <MacroPills {...total} textColor="#ffffff" />
+                <Pressable onPress={() => router.navigate('/goals')}>
+                  <ThemedText type="smallBold" style={styles.link}>
+                    Define tus objetivos →
+                  </ThemedText>
+                </Pressable>
+              </>
             )}
-            <MacroBar {...total} />
-            <MacroPills {...total} textColor="#ffffff" goal={goals} />
-          </View>
+          </LinearGradient>
 
           {MEALS.map((meal, index) => {
             const mealEntries = entries.filter((e) => e.meal === meal.key);
             const mealTotal = sumTotals(mealEntries);
             return (
               <Animated.View key={meal.key} entering={FadeInDown.duration(300).delay(index * 60)}>
-              <ThemedView type="backgroundElement" style={styles.card}>
-                <View style={styles.row}>
-                  <ThemedText style={styles.mealTitle}>
-                    {MEAL_ICONS[meal.key]} {meal.label}
-                  </ThemedText>
-                  <ThemedText style={styles.mealKcal}>{mealTotal.kcal} kcal</ThemedText>
-                </View>
-                <MacroPills {...mealTotal} />
-
-                {mealEntries.length === 0 ? (
-                  <ThemedText type="small" themeColor="textSecondary">
-                    Sin alimentos. Añádelos desde Buscar.
-                  </ThemedText>
-                ) : (
-                  <View style={styles.entries}>
-                    {mealEntries.map((e) => (
-                      <View key={e.id} style={styles.entry}>
-                        <View style={styles.entryText}>
-                          <ThemedText type="small" numberOfLines={2}>
-                            {e.food_name}
-                          </ThemedText>
-                          <ThemedText type="small" themeColor="textSecondary">
-                            {e.grams} g · {e.kcal} kcal
-                          </ThemedText>
-                        </View>
-                        <Pressable onPress={() => remove(e.id)} hitSlop={8}>
-                          <ThemedText type="small" style={styles.remove}>
-                            Quitar
-                          </ThemedText>
-                        </Pressable>
-                      </View>
-                    ))}
+                <Card>
+                  <View style={styles.mealHeader}>
+                    <View style={[styles.iconCircle, { backgroundColor: theme.backgroundSelected }]}>
+                      <ThemedText style={styles.icon}>{MEAL_ICONS[meal.key]}</ThemedText>
+                    </View>
+                    <View style={styles.mealTitleBox}>
+                      <ThemedText style={styles.mealTitle}>{meal.label}</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {mealTotal.kcal} kcal
+                      </ThemedText>
+                    </View>
+                    <Pressable
+                      onPress={() => router.navigate({ pathname: '/explore', params: { meal: meal.key } })}
+                      hitSlop={8}
+                      style={({ pressed }) => [
+                        styles.addButton,
+                        { backgroundColor: theme.backgroundSelected, opacity: pressed ? 0.6 : 1 },
+                      ]}>
+                      <ThemedText style={styles.addSymbol}>+</ThemedText>
+                    </Pressable>
                   </View>
-                )}
-              </ThemedView>
+
+                  {mealEntries.length > 0 ? (
+                    <>
+                      <MacroPills {...mealTotal} />
+                      <View style={styles.entries}>
+                        {mealEntries.map((e) => (
+                          <View key={e.id} style={[styles.entry, { borderTopColor: theme.backgroundSelected }]}>
+                            <View style={styles.entryText}>
+                              <ThemedText type="small" numberOfLines={2}>
+                                {e.food_name}
+                              </ThemedText>
+                              <ThemedText type="small" themeColor="textSecondary">
+                                {e.grams} g · {e.kcal} kcal
+                              </ThemedText>
+                            </View>
+                            <Pressable onPress={() => remove(e.id)} hitSlop={8}>
+                              <ThemedText type="small" style={styles.remove}>
+                                Quitar
+                              </ThemedText>
+                            </Pressable>
+                          </View>
+                        ))}
+                      </View>
+                    </>
+                  ) : null}
+                </Card>
               </Animated.View>
             );
           })}
@@ -146,16 +182,20 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
   content: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },
-  totalCard: { borderRadius: 24, padding: Spacing.four, gap: Spacing.three },
-  onAccentMuted: { color: 'rgba(255,255,255,0.8)' },
-  progressTrack: { height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.25)' },
-  progressFill: { height: 10, borderRadius: 5 },
+  totalCard: { borderRadius: 28, padding: Spacing.four, gap: Spacing.three },
+  onAccentMuted: { color: 'rgba(255,255,255,0.82)' },
+  link: { color: '#ffffff' },
   kcalRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two },
-  kcalValue: { color: '#ffffff', fontSize: 52, lineHeight: 58, fontWeight: 700 },
-  card: { borderRadius: 18, padding: Spacing.three, gap: Spacing.two },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  mealTitle: { fontSize: 18, fontWeight: 700 },
-  mealKcal: { fontSize: 16, fontWeight: 700 },
+  kcalValue: { color: '#ffffff', fontSize: 56, lineHeight: 62, fontWeight: 700, letterSpacing: -1.5 },
+  progressTrack: { height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.28)' },
+  progressFill: { height: 10, borderRadius: 5 },
+  mealHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  iconCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  icon: { fontSize: 22, lineHeight: 28 },
+  mealTitleBox: { flex: 1 },
+  mealTitle: { fontSize: 17, lineHeight: 22, fontWeight: 700 },
+  addButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  addSymbol: { fontSize: 22, lineHeight: 26, fontWeight: 600 },
   entries: { gap: Spacing.two, marginTop: Spacing.one },
   entry: {
     flexDirection: 'row',
@@ -163,7 +203,6 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingTop: Spacing.two,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(128,128,128,0.35)',
   },
   entryText: { flex: 1 },
   remove: { color: '#E5484D' },

@@ -1,13 +1,15 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/button';
 import { Chips, NumberField, Stepper } from '@/components/form-controls';
 import { MacroPills } from '@/components/macro-pills';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Spacing } from '@/constants/theme';
+import { Accent, AccentGradient, Spacing } from '@/constants/theme';
 import { getGoals, saveGoals } from '@/db/goals';
 import {
   ACTIVITY_OPTIONS,
@@ -203,7 +205,7 @@ export default function GoalsScreen() {
               </Section>
 
               {result ? (
-                <View style={[styles.resultCard, { backgroundColor: Accent }]}>
+                <LinearGradient colors={AccentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.resultCard}>
                   <ThemedText type="smallBold" style={styles.onAccentMuted}>
                     TU OBJETIVO DIARIO
                   </ThemedText>
@@ -220,7 +222,7 @@ export default function GoalsScreen() {
                       ⚠️ La proteína y la grasa ya superan tus calorías. Prueba con menos déficit o menos proteína.
                     </ThemedText>
                   ) : null}
-                </View>
+                </LinearGradient>
               ) : (
                 <ThemedText type="small" themeColor="textSecondary">
                   Rellena edad, peso y altura para ver tu objetivo.
@@ -245,17 +247,7 @@ export default function GoalsScreen() {
             </Section>
           )}
 
-          <Pressable
-            onPress={save}
-            disabled={!canSave}
-            style={({ pressed }) => [
-              styles.saveButton,
-              { backgroundColor: Accent, opacity: !canSave ? 0.4 : pressed ? 0.8 : 1 },
-            ]}>
-            <ThemedText type="smallBold" style={{ color: '#ffffff' }}>
-              Guardar objetivos
-            </ThemedText>
-          </Pressable>
+          <Button label="Guardar objetivos" onPress={save} disabled={!canSave} />
           {message ? (
             <ThemedText type="small" style={styles.message}>
               {message}
@@ -283,11 +275,10 @@ const styles = StyleSheet.create({
   section: { gap: Spacing.two },
   sectionTitle: { fontSize: 18, fontWeight: 700 },
   fields: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  resultCard: { borderRadius: 24, padding: Spacing.four, gap: Spacing.two },
+  resultCard: { borderRadius: 28, padding: Spacing.four, gap: Spacing.two },
   onAccentMuted: { color: 'rgba(255,255,255,0.8)' },
   kcalRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two },
-  kcalValue: { color: '#ffffff', fontSize: 52, lineHeight: 58, fontWeight: 700 },
+  kcalValue: { color: '#ffffff', fontSize: 52, lineHeight: 58, fontWeight: 700, letterSpacing: -1 },
   warning: { color: '#FFE3A3' },
-  saveButton: { alignItems: 'center', padding: Spacing.three, borderRadius: 14 },
   message: { color: Accent, textAlign: 'center' },
 });

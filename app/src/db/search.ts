@@ -22,8 +22,8 @@ export type FoodResult = Food & {
 type FoodRow = Food & { search_text: string };
 
 const MIN_QUERY_LENGTH = 2;
-const CANDIDATES_PER_QUERY = 60;
-const MAX_RESULTS = 50;
+const CANDIDATES_PER_QUERY = 100;
+const MAX_RESULTS = 100;
 
 /** Minúsculas y sin tildes (ñ -> n). Debe coincidir con normalizar() de pipeline/02_build_db.py. */
 export function normalize(text: string): string {

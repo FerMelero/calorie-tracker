@@ -1,8 +1,10 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MacroBar } from '@/components/macro-bar';
 import { MacroPills } from '@/components/macro-pills';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -60,14 +62,16 @@ export default function HoyScreen() {
                 kcal
               </ThemedText>
             </View>
+            <MacroBar {...total} />
             <MacroPills {...total} textColor="#ffffff" />
           </View>
 
-          {MEALS.map((meal) => {
+          {MEALS.map((meal, index) => {
             const mealEntries = entries.filter((e) => e.meal === meal.key);
             const mealTotal = sumTotals(mealEntries);
             return (
-              <ThemedView key={meal.key} type="backgroundElement" style={styles.card}>
+              <Animated.View key={meal.key} entering={FadeInDown.duration(300).delay(index * 60)}>
+              <ThemedView type="backgroundElement" style={styles.card}>
                 <View style={styles.row}>
                   <ThemedText style={styles.mealTitle}>
                     {MEAL_ICONS[meal.key]} {meal.label}
@@ -102,6 +106,7 @@ export default function HoyScreen() {
                   </View>
                 )}
               </ThemedView>
+              </Animated.View>
             );
           })}
         </ScrollView>
@@ -114,11 +119,11 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
   content: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },
-  totalCard: { borderRadius: 20, padding: Spacing.four, gap: Spacing.two },
+  totalCard: { borderRadius: 24, padding: Spacing.four, gap: Spacing.three },
   onAccentMuted: { color: 'rgba(255,255,255,0.8)' },
   kcalRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two },
   kcalValue: { color: '#ffffff', fontSize: 52, lineHeight: 58, fontWeight: 700 },
-  card: { borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
+  card: { borderRadius: 18, padding: Spacing.three, gap: Spacing.two },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   mealTitle: { fontSize: 18, fontWeight: 700 },
   mealKcal: { fontSize: 16, fontWeight: 700 },

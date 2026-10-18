@@ -15,7 +15,7 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 ## Estado del proyecto
 
 - ✅ Pipeline: filtra Open Food Facts (España) y genera `foods.db` (~185 000 alimentos, ~28 MB) con búsqueda de texto.
-- ✅ Buscar: búsqueda en español, sin importar mayúsculas ni tildes, con porcentaje de parecido.
+- ✅ Buscar: búsqueda en español, sin importar mayúsculas ni tildes, con porcentaje de parecido. Los resultados salen de 10 en 10 (botón "Ver más").
 - ✅ Hoy: diario del día con 5 franjas (desayuno, comida, snacks, merienda, cena), total del día y total por franja.
 - ⏳ Pendiente: selector de fecha, editar cantidades, alimentos propios, recetas, genéricos de BEDCA, exportar/importar datos.
 
@@ -31,7 +31,8 @@ calorie-tracker/
 │   ├── src/components/         #   Piezas reutilizables
 │   │   ├── app-tabs.tsx        #     Barra de pestañas de abajo
 │   │   ├── add-food-modal.tsx  #     Ventana para elegir franja y gramos al añadir
-│   │   └── macro-pills.tsx     #     Etiquetas de proteínas / carbos / grasas
+│   │   ├── macro-pills.tsx     #     Etiquetas de proteínas / carbos / grasas
+│   │   └── macro-bar.tsx       #     Barra con el reparto de macros
 │   ├── src/db/                 #   Acceso a datos
 │   │   ├── search.ts           #     Búsqueda en foods.db (FTS5 + LIKE + parecido)
 │   │   └── user.ts             #     user.db: diario, migraciones, totales

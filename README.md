@@ -18,7 +18,10 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 - ✅ Buscar: búsqueda en español, sin importar mayúsculas ni tildes, con porcentaje de parecido. Los resultados salen de 10 en 10 (botón "Ver más").
 - ✅ Hoy: diario del día con 5 franjas (desayuno, comida, snacks, merienda, cena), total del día y total por franja.
 - ✅ Objetivos: el usuario elige sus kcal y macros o los calcula con Mifflin-St Jeor (sexo, edad, peso, altura, actividad y objetivo). Hoy muestra el progreso frente al objetivo y cada franja tiene un botón + que abre Buscar con esa franja ya elegida.
-- ⏳ Pendiente: selector de fecha, editar cantidades, alimentos propios, recetas, genéricos de BEDCA, exportar/importar datos.
+- ✅ Historial: lista de días con sus totales; al tocar uno se ve el detalle y se puede añadir o quitar comida de ese día.
+- ✅ Mis alimentos: el usuario crea los suyos (se guardan en `user.db`) y salen en Buscar con ⭐.
+- ✅ Copia de seguridad: exportar e importar JSON, validando el formato antes de importar.
+- ⏳ Pendiente: editar cantidades, recetas, genéricos de BEDCA, icono y pantalla de carga propios.
 
 ## Estructura del repo
 
@@ -29,21 +32,31 @@ calorie-tracker/
 │   │   ├── _layout.tsx         #     Abre foods.db y monta las pestañas
 │   │   ├── index.tsx           #     Pestaña "Hoy": diario, franjas y totales
 │   │   ├── explore.tsx         #     Pestaña "Buscar": búsqueda de alimentos
-│   │   └── goals.tsx           #     Pestaña "Objetivos": calcular o elegir kcal y macros
+│   │   ├── goals.tsx           #     Pestaña "Objetivos": calcular o elegir kcal y macros
+│   │   ├── history/            #     Pestaña "Historial": lista de días y detalle de cada día
+│   │   └── more/               #     Pestaña "Más": Mis alimentos, formulario, copia de seguridad, Acerca de
 │   ├── src/components/         #   Piezas reutilizables
 │   │   ├── app-tabs.tsx        #     Barra de pestañas de abajo
 │   │   ├── add-food-modal.tsx  #     Ventana para elegir franja y gramos al añadir
 │   │   ├── macro-pills.tsx     #     Etiquetas de proteínas / carbos / grasas
 │   │   ├── macro-bar.tsx       #     Barra con el reparto de macros
 │   │   ├── form-controls.tsx   #     Botones de elección, campos numéricos y botones − / +
+│   │   ├── day-view.tsx        #     Resumen de un día (lo usan Hoy y el detalle del Historial)
+│   │   ├── themed-stack.tsx    #     Navegación con cabecera nativa con los colores de la app
 │   │   ├── card.tsx            #     Tarjeta base (fondo, esquinas y sombra suave)
 │   │   ├── button.tsx          #     Botón principal / con borde
 │   │   └── macro-progress.tsx  #     Macros consumidos frente al objetivo, con barras
 │   ├── src/db/                 #   Acceso a datos
 │   │   ├── search.ts           #     Búsqueda en foods.db (FTS5 + LIKE + parecido)
 │   │   ├── user.ts             #     user.db: diario, migraciones, totales
-│   │   └── goals.ts            #     Guardar y leer los objetivos del usuario
-│   ├── src/lib/nutrition.ts    #   Fórmula de Mifflin-St Jeor y reparto de macros (funciones puras)
+│   │   ├── goals.ts            #     Guardar y leer los objetivos del usuario
+│   │   ├── custom-foods.ts     #     Alimentos propios (tabla custom_foods de user.db)
+│   │   └── backup.ts           #     Construir la copia de seguridad e importarla
+│   ├── src/lib/                #   Funciones puras (sin Expo)
+│   │   ├── nutrition.ts        #     Fórmula de Mifflin-St Jeor y reparto de macros
+│   │   ├── validation.ts       #     Reglas del formato de datos (alimentos, diario, objetivos, copia)
+│   │   ├── text.ts             #     Normalizar texto (sin tildes) y separar palabras
+│   │   └── dates.ts            #     Fechas ISO y formato largo en español
 │   ├── src/constants/theme.ts  #   Colores, espacios y colores de los macros
 │   └── assets/db/foods.db      #   Base de alimentos (NO se sube a git; copiar desde pipeline)
 ├── pipeline/                   # Fábrica de datos: solo se ejecuta en el PC
@@ -65,6 +78,7 @@ calorie-tracker/
 | Cambiar la pantalla de búsqueda | `app/src/app/explore.tsx` |
 | Cambiar la pantalla del día | `app/src/app/index.tsx` |
 | Guardar algo nuevo en el diario (campos, tablas) | `app/src/db/user.ts` (nueva migración subiendo `USER_DB_VERSION`) |
+| Cambiar qué se considera un dato válido (importar / alimentos propios) | `app/src/lib/validation.ts` |
 | Cambiar la fórmula de objetivos o sus rangos | `app/src/lib/nutrition.ts` |
 | Cambiar colores o espacios | `app/src/constants/theme.ts` |
 | Añadir o renombrar una pestaña | un archivo en `app/src/app/` + `app/src/components/app-tabs.tsx` |
@@ -114,6 +128,8 @@ Ejecuta lint y typecheck antes de dar una tarea por terminada. (`expo lint` da h
 
 - **`foods.db`** (solo lectura, viene empaquetada en la app): tabla `foods` con los valores **por 100 g** y `foods_fts`, el índice de búsqueda. Los datos que no existen se dejan como `NULL`, no como 0.
 - **`user.db`** (se crea en el móvil): tabla `entries` con lo que comes. Cada registro guarda los nutrientes ya calculados para los gramos tomados, así el histórico no cambia aunque cambie `foods.db`.
+- **Alimentos propios:** tabla `custom_foods` en `user.db` (nunca en `foods.db`, que es de solo lectura y se reemplaza al actualizar). Cada registro del diario guarda su propia copia de los valores, así que borrar o editar un alimento propio no cambia días pasados.
+- **Copia de seguridad:** JSON con `app`, `format_version`, `custom_foods`, `entries` y `goals`. Al importar se valida todo (mismas reglas que el pipeline: por 100 g, kcal 0–900, macros ≤ 100 g, nombres de 3 a 100 letras, fechas reales, franjas válidas); si algo falla no se importa nada. Los duplicados se saltan.
 - **Objetivos:** una sola fila en `user.db` (tabla `goals`). No hay cuentas: los objetivos pertenecen a quien usa ese móvil. Guarda tanto el resultado (kcal y macros) como los datos del cálculo, para poder editarlos después.
 - **Búsqueda:** el texto se pasa a minúsculas y sin tildes. Primero busca palabras que empiezan por lo escrito (FTS5, muy rápido) y luego lo escrito dentro de cualquier palabra (LIKE). Cada resultado recibe un porcentaje de parecido y se ordenan de mayor a menor. Solo funciona en español y no corrige erratas.
 

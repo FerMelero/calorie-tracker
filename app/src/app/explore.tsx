@@ -13,7 +13,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, Spacing } from '@/constants/theme';
 import { searchFoods, type FoodResult } from '@/db/search';
-import { MEALS } from '@/db/user';
+import { MEALS, todayISO } from '@/db/user';
+import { formatLongDate, isValidISODate } from '@/lib/dates';
 import { useTheme } from '@/hooks/use-theme';
 
 const DEBOUNCE_MS = 250;
@@ -21,7 +22,8 @@ const PAGE_SIZE = 10;
 
 export default function BuscarScreen() {
   const db = useSQLiteContext();
-  const { meal } = useLocalSearchParams<{ meal?: string }>();
+  const { meal, date: dateParam } = useLocalSearchParams<{ meal?: string; date?: string }>();
+  const targetDate = dateParam && isValidISODate(dateParam) ? dateParam : undefined;
   const mealFromHome = MEALS.find((m) => m.key === meal)?.key;
   const theme = useTheme();
   const [query, setQuery] = useState('');
@@ -74,6 +76,7 @@ export default function BuscarScreen() {
           {mealFromHome ? (
             <ThemedText type="smallBold" style={{ color: Accent }}>
               Añadiendo a {MEALS.find((m) => m.key === mealFromHome)?.label}
+              {targetDate && targetDate !== todayISO() ? ` · ${formatLongDate(targetDate)}` : ''}
             </ThemedText>
           ) : null}
 
@@ -86,7 +89,7 @@ export default function BuscarScreen() {
 
         <FlatList
           data={shown}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item) => `${item.source}-${item.id}`}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           contentContainerStyle={styles.list}
@@ -127,6 +130,7 @@ export default function BuscarScreen() {
                   <View style={styles.cardTop}>
                     <View style={styles.cardTitle}>
                       <ThemedText type="smallBold" numberOfLines={2}>
+                        {item.source === 'custom' ? '⭐ ' : ''}
                         {item.name}
                       </ThemedText>
                       {item.brand ? (
@@ -157,7 +161,7 @@ export default function BuscarScreen() {
           )}
         />
       </SafeAreaView>
-      <AddFoodModal key={selected?.id} food={selected} defaultMeal={mealFromHome} onClose={() => setSelected(null)} />
+      <AddFoodModal key={selected ? `${selected.source}-${selected.id}` : 'none'} food={selected} defaultMeal={mealFromHome} date={targetDate} onClose={() => setSelected(null)} />
     </ThemedView>
   );
 }

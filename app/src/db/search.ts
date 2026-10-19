@@ -1,7 +1,12 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { searchCustomFoods } from '@/db/custom-foods';
+import { normalize, tokenize } from '@/lib/text';
+
 export type Food = {
   id: number;
+  /** 'db' = foods.db; 'custom' = alimento propio del usuario */
+  source: 'db' | 'custom';
   barcode: string | null;
   name: string;
   brand: string | null;
@@ -19,24 +24,11 @@ export type FoodResult = Food & {
   similarity: number;
 };
 
-type FoodRow = Food & { search_text: string };
+export type FoodRow = Food & { search_text: string };
 
 const MIN_QUERY_LENGTH = 2;
 const CANDIDATES_PER_QUERY = 100;
 const MAX_RESULTS = 100;
-
-/** Minúsculas y sin tildes (ñ -> n). Debe coincidir con normalizar() de pipeline/02_build_db.py. */
-export function normalize(text: string): string {
-  return text.normalize('NFD').replace(/\p{Mn}/gu, '').toLowerCase();
-}
-
-/** Palabras de la búsqueda: solo letras y números, para poder usarlas sin riesgo en FTS5 y LIKE. */
-function tokenize(query: string): string[] {
-  return normalize(query)
-    .replace(/[^a-z0-9]+/g, ' ')
-    .split(' ')
-    .filter(Boolean);
-}
 
 function bigrams(text: string): string[] {
   const compact = ` ${text} `;
@@ -89,22 +81,26 @@ export async function searchFoods(db: SQLiteDatabase, rawQuery: string): Promise
   const columns = 'f.id, f.barcode, f.name, f.brand, f.kcal, f.protein, f.carbs, f.fat, f.sugars, f.fiber, f.salt, f.search_text';
 
   const ftsMatch = tokens.map((t) => `"${t}"*`).join(' ');
-  const ftsRows = await db.getAllAsync<FoodRow>(
+  const ftsRows = await db.getAllAsync<Omit<FoodRow, 'source'>>(
     `SELECT ${columns} FROM foods_fts JOIN foods f ON f.id = foods_fts.rowid
      WHERE foods_fts MATCH ? ORDER BY rank LIMIT ?`,
     [ftsMatch, CANDIDATES_PER_QUERY],
   );
 
   const likeWhere = tokens.map(() => 'f.search_text LIKE ?').join(' AND ');
-  const likeRows = await db.getAllAsync<FoodRow>(
+  const likeRows = await db.getAllAsync<Omit<FoodRow, 'source'>>(
     `SELECT ${columns} FROM foods f WHERE ${likeWhere} LIMIT ?`,
     [...tokens.map((t) => `%${t}%`), CANDIDATES_PER_QUERY],
   );
 
-  const byId = new Map<number, FoodRow>();
-  for (const row of [...ftsRows, ...likeRows]) byId.set(row.id, row);
+  const found: FoodRow[] = [...ftsRows, ...likeRows].map((row) => ({ ...row, source: 'db' as const }));
+  const custom = await searchCustomFoods(tokens, CANDIDATES_PER_QUERY);
 
-  return [...byId.values()]
+  // foods.db y alimentos propios tienen ids distintos: se distinguen por source + id
+  const unique = new Map<string, FoodRow>();
+  for (const row of [...found, ...custom]) unique.set(`${row.source}-${row.id}`, row);
+
+  return [...unique.values()]
     .map(({ search_text, ...food }) => ({
       ...food,
       similarity: similarity(query, tokens, { ...food, search_text }),

@@ -1,180 +1,197 @@
-import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
+import { useEffect, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ExternalLink } from '@/components/external-link';
+import { AddFoodModal } from '@/components/add-food-modal';
+import { Button } from '@/components/button';
+import { Card } from '@/components/card';
+import { MacroPills } from '@/components/macro-pills';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Accent, Spacing } from '@/constants/theme';
+import { searchFoods, type FoodResult } from '@/db/search';
+import { MEALS, todayISO } from '@/db/user';
+import { formatLongDate, isValidISODate } from '@/lib/dates';
 import { useTheme } from '@/hooks/use-theme';
 
-export default function TabTwoScreen() {
-  const safeAreaInsets = useSafeAreaInsets();
-  const insets = {
-    ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
-  };
-  const theme = useTheme();
+const DEBOUNCE_MS = 250;
+const PAGE_SIZE = 10;
 
-  const contentPlatformStyle = Platform.select({
-    android: {
-      paddingTop: insets.top,
-      paddingLeft: insets.left,
-      paddingRight: insets.right,
-      paddingBottom: insets.bottom,
-    },
-    web: {
-      paddingTop: Spacing.six,
-      paddingBottom: Spacing.four,
-    },
-  });
+export default function BuscarScreen() {
+  const db = useSQLiteContext();
+  const { meal, date: dateParam } = useLocalSearchParams<{ meal?: string; date?: string }>();
+  const targetDate = dateParam && isValidISODate(dateParam) ? dateParam : undefined;
+  const mealFromHome = MEALS.find((m) => m.key === meal)?.key;
+  const theme = useTheme();
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<FoodResult[]>([]);
+  const [visible, setVisible] = useState(PAGE_SIZE);
+  const [selected, setSelected] = useState<FoodResult | null>(null);
+
+  useEffect(() => {
+    // Espera a que el usuario deje de escribir y descarta respuestas antiguas
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const found = await searchFoods(db, query);
+      if (cancelled) return;
+      setResults(found);
+      setVisible(PAGE_SIZE);
+    }, DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [db, query]);
+
+  const shown = results.slice(0, visible);
+  const searching = query.trim().length >= 2;
 
   return (
-    <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentInset={insets}
-      contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Explore</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            This starter app includes example{'\n'}code to help you get started.
-          </ThemedText>
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <ThemedText type="subtitle">Buscar</ThemedText>
 
-          <ExternalLink href="https://docs.expo.dev" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundElement" style={styles.linkButton}>
-                <ThemedText type="link">Expo documentation</ThemedText>
-                <SymbolView
-                  tintColor={theme.text}
-                  name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
-                  size={12}
-                />
-              </ThemedView>
-            </Pressable>
-          </ExternalLink>
-        </ThemedView>
+          <View style={[styles.searchBox, { backgroundColor: theme.backgroundElement }]}>
+            <ThemedText style={styles.searchIcon}>🔍</ThemedText>
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Jamón serrano, arroz, yogur..."
+              placeholderTextColor={theme.textSecondary}
+              autoCorrect={false}
+              autoCapitalize="none"
+              style={[styles.input, { color: theme.text }]}
+            />
+            {query.length > 0 ? (
+              <Pressable onPress={() => setQuery('')} hitSlop={10}>
+                <ThemedText themeColor="textSecondary">✕</ThemedText>
+              </Pressable>
+            ) : null}
+          </View>
 
-        <ThemedView style={styles.sectionsWrapper}>
-          <Collapsible title="File-based routing">
-            <ThemedText type="small">
-              This app has two screens: <ThemedText type="code">src/app/index.tsx</ThemedText> and{' '}
-              <ThemedText type="code">src/app/explore.tsx</ThemedText>
+          {mealFromHome ? (
+            <ThemedText type="smallBold" style={{ color: Accent }}>
+              Añadiendo a {MEALS.find((m) => m.key === mealFromHome)?.label}
+              {targetDate && targetDate !== todayISO() ? ` · ${formatLongDate(targetDate)}` : ''}
             </ThemedText>
-            <ThemedText type="small">
-              The layout file in <ThemedText type="code">src/app/_layout.tsx</ThemedText> sets up
-              the tab navigator.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/router/introduction">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+          ) : null}
 
-          <Collapsible title="Android, iOS, and web support">
-            <ThemedView type="backgroundElement" style={styles.collapsibleContent}>
-              <ThemedText type="small">
-                You can open this project on Android, iOS, and the web. To open the web version,
-                press <ThemedText type="smallBold">w</ThemedText> in the terminal running this
-                project.
+          <View style={[styles.notice, { backgroundColor: theme.backgroundSelected }]}>
+            <ThemedText type="small" themeColor="textSecondary">
+              🇪🇸 Busca en español. Todavía no hay soporte para búsquedas en inglés.
+            </ThemedText>
+          </View>
+        </View>
+
+        <FlatList
+          data={shown}
+          keyExtractor={(item) => `${item.source}-${item.id}`}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            results.length > 0 ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                Mostrando {shown.length} de {results.length} resultados
               </ThemedText>
-              <Image
-                source={require('@/assets/images/tutorial-web.png')}
-                style={styles.imageTutorial}
-              />
-            </ThemedView>
-          </Collapsible>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <ThemedText style={styles.emptyEmoji}>{searching ? '🤷' : '🥗'}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                {searching
+                  ? 'No hemos encontrado nada. Prueba con otra palabra.'
+                  : 'Escribe al menos 2 letras. Toca un resultado para añadirlo a tu día.'}
+              </ThemedText>
+            </View>
+          }
+          ListFooterComponent={
+            visible < results.length ? (
+              <View style={styles.moreButton}>
+                <Button
+                  variant="outline"
+                  label={`Ver ${Math.min(PAGE_SIZE, results.length - visible)} más`}
+                  onPress={() => setVisible((v) => v + PAGE_SIZE)}
+                />
+              </View>
+            ) : null
+          }
+          renderItem={({ item, index }) => (
+            <Animated.View entering={FadeInDown.duration(250).delay((index % PAGE_SIZE) * 40)}>
+              <Pressable
+                onPress={() => setSelected(item)}
+                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+                <Card>
+                  <View style={styles.cardTop}>
+                    <View style={styles.cardTitle}>
+                      <ThemedText type="smallBold" numberOfLines={2}>
+                        {item.source === 'custom' ? '⭐ ' : ''}
+                        {item.name}
+                      </ThemedText>
+                      {item.brand ? (
+                        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                          {item.brand}
+                        </ThemedText>
+                      ) : null}
+                    </View>
+                    <View style={styles.kcalBox}>
+                      <ThemedText style={styles.kcalValue}>{item.kcal}</ThemedText>
+                      <ThemedText style={styles.kcalUnit}>kcal</ThemedText>
+                    </View>
+                  </View>
 
-          <Collapsible title="Images">
-            <ThemedText type="small">
-              For static images, you can use the <ThemedText type="code">@2x</ThemedText> and{' '}
-              <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
-              screen densities.
-            </ThemedText>
-            <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
-            <ExternalLink href="https://reactnative.dev/docs/images">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+                  <MacroPills protein={item.protein} carbs={item.carbs} fat={item.fat} />
 
-          <Collapsible title="Light and dark mode components">
-            <ThemedText type="small">
-              This template has light and dark mode support. The{' '}
-              <ThemedText type="code">useColorScheme()</ThemedText> hook lets you inspect what the
-              user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
-
-          <Collapsible title="Animations">
-            <ThemedText type="small">
-              This template includes an example of an animated component. The{' '}
-              <ThemedText type="code">src/components/ui/collapsible.tsx</ThemedText> component uses
-              the powerful <ThemedText type="code">react-native-reanimated</ThemedText> library to
-              animate opening this hint.
-            </ThemedText>
-          </Collapsible>
-        </ThemedView>
-        {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
-    </ScrollView>
+                  <View style={styles.similarityRow}>
+                    <View style={styles.similarityTrack}>
+                      <View style={[styles.similarityFill, { width: `${item.similarity}%` }]} />
+                    </View>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {item.similarity} % parecido · por 100 g
+                    </ThemedText>
+                  </View>
+                </Card>
+              </Pressable>
+            </Animated.View>
+          )}
+        />
+      </SafeAreaView>
+      <AddFoodModal key={selected ? `${selected.source}-${selected.id}` : 'none'} food={selected} defaultMeal={mealFromHome} date={targetDate} onClose={() => setSelected(null)} />
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
+  container: { flex: 1 },
+  safeArea: { flex: 1 },
+  header: { padding: Spacing.three, gap: Spacing.two },
+  searchBox: {
     flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  container: {
-    maxWidth: MaxContentWidth,
-    flexGrow: 1,
-  },
-  titleContainer: {
-    gap: Spacing.three,
     alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
+    gap: Spacing.two,
+    borderRadius: 18,
+    paddingHorizontal: Spacing.three,
+    boxShadow: '0 2px 12px rgba(0, 0, 0, 0.06)',
   },
-  centerText: {
-    textAlign: 'center',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    justifyContent: 'center',
-    gap: Spacing.one,
-    alignItems: 'center',
-  },
-  sectionsWrapper: {
-    gap: Spacing.five,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-  },
-  collapsibleContent: {
-    alignItems: 'center',
-  },
-  imageTutorial: {
-    width: '100%',
-    aspectRatio: 296 / 171,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  imageReact: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
-  },
+  searchIcon: { fontSize: 16 },
+  input: { flex: 1, paddingVertical: 14, fontSize: 16 },
+  notice: { borderRadius: 12, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
+  list: { paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.six },
+  empty: { alignItems: 'center', gap: Spacing.two, marginTop: Spacing.five },
+  emptyEmoji: { fontSize: 48, lineHeight: 56 },
+  emptyText: { textAlign: 'center', maxWidth: 260 },
+  cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three },
+  cardTitle: { flex: 1 },
+  kcalBox: { alignItems: 'center', backgroundColor: Accent, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, minWidth: 60 },
+  kcalValue: { color: '#ffffff', fontSize: 18, lineHeight: 22, fontWeight: 700 },
+  kcalUnit: { color: 'rgba(255,255,255,0.85)', fontSize: 11, lineHeight: 14, fontWeight: 600 },
+  similarityRow: { gap: 4 },
+  similarityTrack: { height: 4, borderRadius: 2, backgroundColor: 'rgba(128,128,128,0.25)', overflow: 'hidden' },
+  similarityFill: { height: 4, borderRadius: 2, backgroundColor: Accent },
+  moreButton: { marginTop: Spacing.one },
 });

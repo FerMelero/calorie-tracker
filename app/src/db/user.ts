@@ -161,6 +161,36 @@ export function getEntries(date: string): Promise<Entry[]> {
   return getUserDb().getAllAsync<Entry>('SELECT * FROM entries WHERE date = ? ORDER BY id', [date]);
 }
 
+/**
+ * Cambia los gramos y/o la franja de un registro. Los nutrientes se recalculan en proporción
+ * (misma comida, otra cantidad), sin necesitar el alimento original: así funciona aunque se haya
+ * borrado. Los campos opcionales que eran null siguen siendo null.
+ */
+export async function updateEntry(id: number, meal: MealKey, grams: number) {
+  const entry = await getUserDb().getFirstAsync<Entry>('SELECT * FROM entries WHERE id = ?', [id]);
+  if (!entry) return;
+  const factor = grams / entry.grams;
+  const scaleBy = (value: number | null) =>
+    value === null ? null : Math.round(value * factor * 10) / 10;
+
+  await getUserDb().runAsync(
+    `UPDATE entries SET meal = ?, grams = ?, kcal = ?, protein = ?, carbs = ?, fat = ?,
+       sugars = ?, fiber = ?, salt = ? WHERE id = ?`,
+    [
+      meal,
+      grams,
+      scaleBy(entry.kcal),
+      scaleBy(entry.protein),
+      scaleBy(entry.carbs),
+      scaleBy(entry.fat),
+      scaleBy(entry.sugars),
+      scaleBy(entry.fiber),
+      scaleBy(entry.salt),
+      id,
+    ],
+  );
+}
+
 export async function deleteEntry(id: number) {
   await getUserDb().runAsync('DELETE FROM entries WHERE id = ?', [id]);
 }

@@ -6,6 +6,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Card } from '@/components/card';
 import { MacroPills } from '@/components/macro-pills';
+import { EditEntryModal } from '@/components/edit-entry-modal';
 import { MacroProgress } from '@/components/macro-progress';
 import { ThemedText } from '@/components/themed-text';
 import { AccentGradient, Spacing } from '@/constants/theme';
@@ -33,6 +34,7 @@ export function DayView({ date, header }: Props) {
   const theme = useTheme();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [goals, setGoals] = useState<Goals | null>(null);
+  const [editing, setEditing] = useState<Entry | null>(null);
 
   const load = useCallback(async () => {
     setEntries(await getEntries(date));
@@ -55,6 +57,7 @@ export function DayView({ date, header }: Props) {
   const over = goals !== null && total.kcal > goals.kcal;
 
   return (
+    <>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {header}
 
@@ -146,7 +149,12 @@ export function DayView({ date, header }: Props) {
                                 {e.grams} g · {e.kcal} kcal
                               </ThemedText>
                             </View>
-                            <Pressable onPress={() => remove(e.id)} hitSlop={8}>
+                            <Pressable onPress={() => setEditing(e)} hitSlop={8}>
+                          <ThemedText type="small" style={styles.edit}>
+                            Editar
+                          </ThemedText>
+                        </Pressable>
+                        <Pressable onPress={() => remove(e.id)} hitSlop={8}>
                               <ThemedText type="small" style={styles.remove}>
                                 Quitar
                               </ThemedText>
@@ -161,6 +169,13 @@ export function DayView({ date, header }: Props) {
             );
           })}
     </ScrollView>
+      <EditEntryModal
+        key={editing?.id ?? 'none'}
+        entry={editing}
+        onClose={() => setEditing(null)}
+        onSaved={load}
+      />
+    </>
   );
 }
 
@@ -189,5 +204,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   entryText: { flex: 1 },
+  edit: { color: '#3E7BFA' },
   remove: { color: '#E5484D' },
 });

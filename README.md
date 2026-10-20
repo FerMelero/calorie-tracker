@@ -21,7 +21,10 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 - ✅ Historial: lista de días con sus totales; al tocar uno se ve el detalle y se puede añadir o quitar comida de ese día.
 - ✅ Mis alimentos: el usuario crea los suyos (se guardan en `user.db`) y salen en Buscar con ⭐.
 - ✅ Copia de seguridad: exportar e importar JSON, validando el formato antes de importar.
-- ⏳ Pendiente: editar cantidades, recetas, genéricos de BEDCA, icono y pantalla de carga propios.
+- ✅ Los gramos se eligen al añadir un alimento (con vista previa de kcal y macros) y se pueden editar después, junto con la franja (botón "Editar" en cada registro).
+- ✅ Nombre ("Contador de Calorías") y paquete (`com.fernando.contadorcalorias`) definidos; `eas.json` y `.easignore` listos.
+- ✅ Icono, icono adaptativo de Android y pantalla de carga propios.
+- ⏳ Pendiente: recetas, genéricos de BEDCA.
 
 ## Estructura del repo
 
@@ -159,6 +162,42 @@ Pendiente de la fase 0: documentar la atribución ODbL en la app (pantalla "Acer
 | `feat/date-picker` | Ver y registrar otros días (selector de fecha en Hoy) |
 | `feat/edit-entry` | Editar los gramos de un registro |
 | `feat/ui-polish` | Pulir interfaz, iconos, mostrar fibra / azúcares / sal |
+
+## Generar una APK para que la prueben amigos
+
+Una APK es el instalador de Android. Se puede pasar por mensaje y se instala sin Play Store (hay que permitir "instalar apps de orígenes desconocidos"). No funciona en iPhone.
+
+### Antes de generarla
+
+1. ✅ **Identidad de la app** en `app/app.json`: nombre "Contador de Calorías", `android.package` y `ios.bundleIdentifier` = `com.fernando.contadorcalorias`. El paquete **no se puede cambiar después** sin que cuente como otra app distinta.
+2. ✅ **Icono y pantalla de carga propios** (`app/assets/images/`), generados con icon.kitchen; los originales completos están en `docs/branding/iconkitchen/`. Si los cambias, estos son los archivos y tamaños:
+   - `icon.png`: 1024×1024, sin transparencia.
+   - `android-icon-foreground.png`: 1024×1024 con fondo transparente; el dibujo debe quedar dentro del círculo central (≈ 66 %), porque Android recorta los bordes.
+   - `android-icon-background.png`: 1024×1024 (un color liso o un degradado).
+   - `android-icon-monochrome.png`: 1024×1024, silueta en blanco sobre transparente.
+   - `splash-icon.png`: logo sobre fondo transparente; el color de fondo de la pantalla de carga se cambia en `app.json` (plugin `expo-splash-screen`).
+   - Herramientas: Figma o Canva para diseñar; [icon.kitchen](https://icon.kitchen) genera todos los tamaños y el icono adaptativo de Android a partir de una imagen.
+3. ✅ **`.easignore`** (en la raíz y en `app/`, idénticos): EAS no sube lo que git ignora, y `foods.db` está ignorado. Estos archivos copian el `.gitignore` y añaden al final `!**/assets/db/foods.db` para que la APK incluya la base de alimentos, además de excluir `pipeline/` (los volcados pesan 1,3 GB). Si cambias uno, cambia el otro. **Comprobación:** al lanzar el build, EAS indica el tamaño de lo que sube; debe rondar los 30-40 MB. Si son 2 o 3 MB, `foods.db` no se está incluyendo.
+4. ⏳ **`foods.db` tiene que existir** en `app/assets/db/` (ver "Primeros pasos") antes de lanzar el build.
+5. Probar todo en el emulador o en el móvil y pasar `npx tsc --noEmit`.
+
+### Generarla (EAS Build, en la nube, plan gratuito)
+
+`app/eas.json` ya tiene un perfil `preview` que genera APK (en vez de AAB, que es lo que pide Play Store).
+
+```bash
+cd app
+npx eas-cli@latest login        # cuenta gratuita de expo.dev
+npx eas-cli@latest build -p android --profile preview
+```
+
+La primera vez pregunta si crear el proyecto en tu cuenta de Expo y si generar la clave de firma: di que sí. Al terminar da un enlace para descargar la APK. EAS guarda la clave de firma: **no la pierdas**, porque las actualizaciones tienen que ir firmadas con la misma para instalarse encima conservando los datos.
+
+### Qué decir a los testers
+
+- Los datos viven solo en su móvil: **que exporten una copia (Más → Copia de seguridad) antes de instalar una versión nueva** o desinstalar.
+- Que anoten qué hacían cuando algo falla (y si es posible, una captura).
+- Los objetivos son estimaciones, no consejo médico.
 
 ## Reglas del proyecto
 

@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { useEnsureVisible } from '@/components/keyboard-aware-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -49,6 +50,7 @@ type FieldProps = {
 /** Campo numérico con etiqueta y unidad. */
 export function NumberField({ label, value, onChangeText, unit }: FieldProps) {
   const theme = useTheme();
+  const ensureVisible = useEnsureVisible();
   return (
     <View style={styles.field}>
       <ThemedText type="small" themeColor="textSecondary">
@@ -58,6 +60,7 @@ export function NumberField({ label, value, onChangeText, unit }: FieldProps) {
         <TextInput
           value={value}
           onChangeText={onChangeText}
+          onFocus={ensureVisible}
           keyboardType="decimal-pad"
           style={[styles.input, { color: theme.text }]}
         />
@@ -67,6 +70,34 @@ export function NumberField({ label, value, onChangeText, unit }: FieldProps) {
           </ThemedText>
         ) : null}
       </View>
+    </View>
+  );
+}
+
+type TextFieldProps = {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder?: string;
+};
+
+/** Campo de texto con etiqueta (nombre, marca...). */
+export function TextField({ label, value, onChangeText, placeholder }: TextFieldProps) {
+  const theme = useTheme();
+  const ensureVisible = useEnsureVisible();
+  return (
+    <View style={styles.textField}>
+      <ThemedText type="small" themeColor="textSecondary">
+        {label}
+      </ThemedText>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        onFocus={ensureVisible}
+        placeholder={placeholder}
+        placeholderTextColor={theme.textSecondary}
+        style={[styles.textInput, { color: theme.text, backgroundColor: theme.backgroundElement }]}
+      />
     </View>
   );
 }
@@ -107,6 +138,8 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   chip: { borderRadius: 99, paddingHorizontal: Spacing.three, paddingVertical: 10, boxShadow: '0 1px 6px rgba(0, 0, 0, 0.05)' },
   field: { flex: 1, minWidth: 100, gap: Spacing.one },
+  textField: { gap: Spacing.one },
+  textInput: { borderRadius: 16, paddingHorizontal: Spacing.three, paddingVertical: 12, fontSize: 16, boxShadow: '0 1px 6px rgba(0, 0, 0, 0.05)' },
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',

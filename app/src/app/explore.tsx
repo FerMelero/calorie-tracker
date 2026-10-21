@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -124,7 +124,10 @@ export default function BuscarScreen() {
           renderItem={({ item, index }) => (
             <Animated.View entering={FadeInDown.duration(250).delay((index % PAGE_SIZE) * 40)}>
               <Pressable
-                onPress={() => setSelected(item)}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setSelected(item);
+                }}
                 style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
                 <Card>
                   <View style={styles.cardTop}>

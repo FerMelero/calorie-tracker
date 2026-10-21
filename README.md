@@ -24,7 +24,7 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 - ✅ Los gramos se eligen al añadir un alimento (con vista previa de kcal y macros) y se pueden editar después, junto con la franja (botón "Editar" en cada registro).
 - ✅ Nombre ("Contador de Calorías") y paquete (`com.fernando.contadorcalorias`) definidos; `eas.json` y `.easignore` listos.
 - ✅ Icono, icono adaptativo de Android y pantalla de carga propios.
-- ⏳ Pendiente: recetas, genéricos de BEDCA.
+- ⏳ Pendiente: ver la sección "Pendiente y mejoras".
 
 ## Estructura del repo
 
@@ -151,17 +151,74 @@ Ver la sección **Versiones, ramas y releases** más abajo.
 
 Pendiente de la fase 0: documentar la atribución ODbL en la app (pantalla "Acerca de") y revisar la licencia de BEDCA.
 
-### Fase 4 — Ampliaciones
+## Pendiente y mejoras
 
-| Rama | Qué se hace |
-|---|---|
-| `feat/custom-foods` | Alimentos propios del usuario |
-| `feat/recipes` | Recetas: alimento compuesto cuyos valores por 100 g se calculan desde los ingredientes |
-| `feat/bedca-import` | Genéricos (pollo, arroz, lentejas…) desde BEDCA en el pipeline, si la licencia y el acceso lo permiten |
-| `feat/export-import` | Exportar/importar los datos del usuario en JSON (es la única copia de seguridad que existe) |
-| `feat/date-picker` | Ver y registrar otros días (selector de fecha en Hoy) |
-| `feat/edit-entry` | Editar los gramos de un registro |
-| `feat/ui-polish` | Pulir interfaz, iconos, mostrar fibra / azúcares / sal |
+Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "Versiones, ramas y releases"). Al terminar uno, bórralo de aquí o pásalo a "Estado del proyecto".
+
+### 🔴 Antes de dar la app a más gente
+
+- [ ] **El teclado tapaba los campos en la APK** (en Expo Go no pasaba). Arreglo hecho en `fix/teclado-apk` (`bottom-sheet-modal.tsx`, `keyboard-aware-scroll-view.tsx`); **falta confirmarlo en una APK nueva** (ver "Lo que Expo Go no reproduce").
+- [ ] Otros bugs encontrados en las pruebas de la APK `v0.1.0`: describirlos aquí y abrir `fix/…`.
+- [ ] **Verificar la búsqueda (FTS5) en la APK de producción**, no solo en Expo Go. Si falla, `foods.db` no se está incluyendo (revisar `.easignore`).
+- [ ] **Licencia del código:** `app/LICENSE` es la MIT de la plantilla de Expo (con el copyright de Expo). Sustituirla por una propia y añadir un `LICENSE` en la raíz.
+- [ ] **Licencia de los datos (ODbL):** publicar `foods.db` (o el modo de generarlo) en abierto y enlazarlo desde "Más → Acerca de". Hay que hacerlo si se distribuye la app.
+- [ ] **Datos incompletos:** en el total del día, avisar cuando algún alimento tenga fibra, azúcares o sal en `NULL` (hoy se suman como 0 sin decir nada).
+- [ ] **Probar en más dispositivos** (otras versiones de Android, pantallas pequeñas, modo oscuro, texto grande).
+
+### 🟡 Funcionalidad
+
+- [ ] **Genéricos de BEDCA** (pollo, arroz, lentejas…): hoy salen solo productos de marca. Revisar antes licencia y acceso. Rama `feature/bedca-import`.
+- [ ] **Recetas:** alimento compuesto cuyos valores por 100 g se calculan desde los ingredientes. Rama `feature/recetas`.
+- [ ] **Porciones y unidades** ("1 yogur", "1 cucharada") además de gramos.
+- [ ] **Recientes, favoritos y "repetir comida de ayer"** para registrar más rápido.
+- [ ] **Mostrar fibra, azúcares y sal** en la interfaz (ya se guardan).
+- [ ] **Escáner de códigos de barras** (`foods.barcode` ya existe en la base). Requiere un development build, no funciona en Expo Go.
+- [ ] **Registro de peso y gráficas** de evolución (calorías por semana, peso).
+- [ ] **Mover un registro a otro día** (hoy se edita gramos y franja, no la fecha).
+- [ ] **Varios perfiles en el mismo móvil** (hoy hay un único usuario por dispositivo).
+- [ ] **Búsqueda en inglés** (hoy solo español; la app lo avisa) y **corrección de erratas** ("jamn" no encuentra "jamón").
+- [ ] **Exportar a CSV** (además del JSON) para abrirlo en una hoja de cálculo.
+- [ ] **Recordatorio de copia de seguridad** o exportación automática periódica: los datos solo viven en el móvil.
+
+### 🟢 Calidad técnica
+
+- [ ] **Tamaño de la APK (121 MB):** limitar el build a las arquitecturas de móviles actuales (arm64) y revisar cuánto pesa `foods.db` dentro del paquete. En Play Store, el AAB pesa bastante menos.
+- [ ] **Calidad de `foods.db`:** unir duplicados casi iguales ("Jamon serrano" y "jamón serrano"), y decidir qué hacer con unos 12 000 productos cuyas kcal no cuadran con sus macros.
+- [ ] **Versión de `foods.db` automática:** hoy hay que cambiar `FOODS_DB_NAME` (`foods-1.db` → `foods-2.db`) a mano al regenerarla.
+- [ ] **Fecha del volcado de Open Food Facts** usado: dejarla anotada para que el resultado sea reproducible.
+- [ ] **Tests** de `lib/validation.ts`, `lib/nutrition.ts` y de los cálculos de `db/user.ts` (hoy se comprobaron a mano).
+- [ ] **Manejo de errores** en consultas y estados de carga (hoy un fallo de SQLite podría dejar la pantalla en blanco).
+- [ ] **Accesibilidad:** etiquetas para lectores de pantalla, contraste y tamaños de fuente.
+- [ ] **Integración continua:** GitHub Actions que ejecute `npx tsc --noEmit` y `npx expo lint` en cada Pull Request.
+- [ ] **Limpiar la plantilla de Expo:** borrar los archivos que ya no se usan (`animated-icon.*`, `external-link.tsx`, `hint-row.tsx`, `web-badge.tsx`, `ui/collapsible.tsx`, `app-tabs.web.tsx`, `expo-logo.png`, `react-logo*.png`, `expo-badge*.png`, `logo-glow.png`, `tutorial-web.png`, `assets/expo.icon/`, `tabIcons/` y `scripts/reset-project.js`) y el error de lint de `use-color-scheme.web.ts`.
+- [ ] **Alinear colores:** el verde del icono (lima `#70E83D`) y el de la app (`#2E9E6B`) no coinciden. Unificarlos en `constants/theme.ts` o regenerar el icono.
+- [ ] **`pipeline/requirements.txt`** no coincide con lo que realmente usa el pipeline (`duckdb`, `pandas`); regenerarlo desde un entorno limpio.
+- [ ] **`docs/licenses.md` y `docs/db-schema.md`:** documentar atribución, licencias y el esquema de `foods.db`.
+- [ ] **EAS Update** (actualizaciones sin reinstalar) si se van a corregir fallos con frecuencia: requiere `expo-updates` y un build nuevo.
+
+### ⚪ Para publicar en Play Store (más adelante)
+
+- [ ] Cuenta de desarrollador (unos 25 USD) y verificación de identidad.
+- [ ] Prueba cerrada con testers durante varias semanas (comprobar los requisitos vigentes en la Play Console).
+- [ ] Política de privacidad con enlace público (la app maneja datos de salud, aunque sean locales).
+- [ ] Formularios de la consola: seguridad de datos, apps de salud, clasificación por edades, público objetivo.
+- [ ] Ficha: descripción, capturas, gráfico de portada de 1024×500 (el icono de 512 está en `docs/branding/iconkitchen/android/`).
+- [ ] Generar el **AAB** con el perfil `production` de `eas.json` y subirlo.
+- [ ] iOS: App Store (99 USD al año), sin probar todavía.
+
+### Lo que Expo Go no reproduce
+
+Expo Go **no es igual que la APK**. Es una app ya hecha, con sus propios ajustes de Android, y algunas cosas se comportan distinto en tu app compilada. Un caso real: en Android 15 o superior las apps compiladas se dibujan de borde a borde y **ya no suben el contenido al abrir el teclado**; Expo Go sí lo hace, así que los campos parecían bien y en la APK los tapaba el teclado.
+
+Por eso, antes de dar un fallo por arreglado hay que probarlo en una APK. Lista de comprobación para cada APK nueva (en un móvil con Android 15 o superior):
+
+- [ ] Buscar → tocar un alimento → escribir los gramos: la ventana sube y se ve lo que escribes y el botón "Añadir".
+- [ ] Editar un registro (Hoy o Historial) → escribir los gramos: igual.
+- [ ] Objetivos → rellenar edad, peso y altura (el último campo no queda tapado) y los campos del modo manual.
+- [ ] Más → Mis alimentos → Nuevo alimento: los campos de abajo (grasas, fibra, sal) quedan por encima del teclado.
+- [ ] Todo lo anterior en modo oscuro y con el texto del sistema en tamaño grande.
+
+Cuando haya varios arreglos pendientes, genera una sola APK `preview` para probarlos juntos (los builds gratuitos son limitados).
 
 ## Generar una APK para que la prueben amigos
 

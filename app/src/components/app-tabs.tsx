@@ -13,7 +13,7 @@ export default function AppTabs() {
       indicatorColor={colors.backgroundElement}
       labelStyle={{ selected: { color: colors.text } }}>
       <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Hoy</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/home.png')}
           renderingMode="template"
@@ -21,11 +21,26 @@ export default function AppTabs() {
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="explore">
-        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Buscar</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/explore.png')}
           renderingMode="template"
         />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="history">
+        <NativeTabs.Trigger.Label>Historial</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="clock.fill" md="history" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="goals">
+        <NativeTabs.Trigger.Label>Objetivos</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="flag.fill" md="flag" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="more">
+        <NativeTabs.Trigger.Label>Más</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="ellipsis.circle.fill" md="more_horiz" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

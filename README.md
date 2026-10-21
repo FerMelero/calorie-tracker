@@ -138,7 +138,7 @@ Ejecuta lint y typecheck antes de dar una tarea por terminada. (`expo lint` da h
 
 ## Plan de trabajo y ramas
 
-Flujo: `main` siempre estable + **ramas cortas por tarea** que se fusionan a `main` y se borran. Commits convencionales (`feat:`, `fix:`, `chore:`, `docs:`). Al cerrar cada fase, tag de versión (`v0.1.0`, …).
+Ver la sección **Versiones, ramas y releases** más abajo.
 
 ### Fases 0 a 3 — hechas
 
@@ -198,6 +198,70 @@ La primera vez pregunta si crear el proyecto en tu cuenta de Expo y si generar l
 - Los datos viven solo en su móvil: **que exporten una copia (Más → Copia de seguridad) antes de instalar una versión nueva** o desinstalar.
 - Que anoten qué hacían cuando algo falla (y si es posible, una captura).
 - Los objetivos son estimaciones, no consejo médico.
+
+## Versiones, ramas y releases
+
+### Ramas
+
+| Rama | Para qué sirve | Quién escribe en ella |
+|---|---|---|
+| `main` | Solo versiones que ya se han entregado a alguien (cada una con su tag). Lo que hay en `main` es lo que se probó. | Solo se fusiona `develop` aquí al sacar una versión |
+| `develop` | Rama de trabajo común: aquí se junta todo lo que está terminado y probado. | Se fusionan las ramas `feature/*` y `fix/*` |
+| `feature/<nombre>` | Una funcionalidad nueva (ej. `feature/recetas`). Sale de `develop` y vuelve a `develop`. | Tú, mientras trabajas |
+| `fix/<nombre>` | Arreglo de un fallo (ej. `fix/gramos-decimales`). Sale de `develop` y vuelve a `develop`. | Tú |
+| `hotfix/<nombre>` | Arreglo urgente de algo que ya está en `main`. Sale de `main` y se fusiona a `main` **y** a `develop`. | Solo si hace falta |
+
+Las ramas `feature/*` y `fix/*` se **borran** al fusionarlas. Commits con prefijo: `feat:`, `fix:`, `chore:`, `docs:`.
+
+### Números de versión
+
+Hay tres números distintos, y conviene no mezclarlos:
+
+| Número | Dónde está | Cómo cambia |
+|---|---|---|
+| **Versión** (`0.1.0`) | `version` en `app/app.json` (y `app/package.json`) | La subes tú a mano antes de cada release |
+| **versionCode** (1, 2, 3…) | Interno de Android | Lo sube EAS solo en cada build (`autoIncrement`). Es lo que permite instalar una APK encima de otra |
+| **Tag de git** (`v0.1.0`) | El commit exacto del que salió esa versión | Lo creas tú al sacar la versión |
+
+La versión sigue **MAYOR.MENOR.PARCHE**:
+- **PARCHE** (`0.1.0` → `0.1.1`): solo arreglos de fallos.
+- **MENOR** (`0.1.0` → `0.2.0`): funcionalidades nuevas.
+- **MAYOR** (`0.x` → `1.0.0`): primera versión pública (Play Store). Hasta entonces, las versiones de prueba son `0.x`.
+
+### Historial de versiones
+
+| Versión | Commit | Qué incluye |
+|---|---|---|
+| `v0.1.0` | `56abae2` | Primera APK de prueba (build EAS `a8aa55e4`): buscar alimentos, diario por franjas, objetivos (Mifflin-St Jeor), historial, alimentos propios, editar registros, exportar/importar |
+
+> Esa APK se generó con la versión interna `1.0.0` (versionCode 1), antes de adoptar este esquema. Es la misma app que `v0.1.0`. Desde el siguiente build la versión interna coincide con el tag.
+
+### Cómo sacar una versión (receta)
+
+1. Asegúrate de que todo está fusionado en `develop` y probado.
+2. En `develop`: sube `version` en `app/app.json` y `app/package.json` (por ejemplo `0.1.1`) y añade una fila al historial de arriba. Commit: `chore: version 0.1.1`.
+3. Fusiona a `main` y crea el tag:
+   ```bash
+   git checkout main
+   git merge --no-ff develop
+   git tag -a v0.1.1 -m "Versión 0.1.1"
+   git push origin main --tags
+   git checkout develop
+   ```
+4. Genera la APK desde `main`: `cd app && npx eas-cli@latest build -p android --profile preview`.
+5. En GitHub: **Releases → Draft a new release** → elige el tag `v0.1.1` → describe los cambios → adjunta la APK descargada de expo.dev. Así cada versión queda con su APK y su código, y el enlace no caduca (los de expo.dev duran 13 días).
+
+### Cómo arreglar un fallo
+
+```bash
+git checkout develop
+git checkout -b fix/descripcion-corta
+# ...arreglar, probar en Expo Go...
+git commit -am "fix: descripción"
+git checkout develop && git merge fix/descripcion-corta
+git branch -d fix/descripcion-corta
+```
+Junta varios arreglos antes de generar otra APK: los builds del plan gratuito son limitados y tardan.
 
 ## Reglas del proyecto
 

@@ -182,7 +182,11 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
 
 ### 🟢 Calidad técnica
 
-- [ ] **Tamaño de la APK (121 MB):** limitar el build a las arquitecturas de móviles actuales (arm64) y revisar cuánto pesa `foods.db` dentro del paquete. En Play Store, el AAB pesa bastante menos.
+- [ ] **Tamaño de la APK (121 MB en `v0.1.0`).** Reparto medido: ~88 MB son librerías nativas de 4 arquitecturas (un móvil solo usa 1), ~16 MB código Java, ~11 MB recursos (incluye `foods.db`, que comprime de 27 a 10 MB) y ~3 MB el JavaScript.
+  - ✅ El perfil `preview` solo compila para móviles actuales (`arm64-v8a` y `armeabi-v7a`); `preview-emulator` compila para el emulador del PC (`x86_64`). Se configura con la variable `BUILD_ARCHS` en `eas.json` y `app.config.js`. Estimación: ~70 MB (o ~55 MB si se quita `armeabi-v7a`). **Falta medir el resultado real.**
+  - [ ] Activar R8 y reducción de recursos (`enableMinifyInReleaseBuilds`, `enableShrinkResourcesInReleaseBuilds` en `expo-build-properties`): puede quitar unos 5-10 MB, pero hay que probar bien la app después.
+  - [ ] Quitar dependencias que ya no se usan (`@expo/ui`, `expo-glass-effect`, `expo-image`, `expo-symbols`, `expo-device`…) junto con los archivos de la plantilla de Expo.
+  - En Play Store, el AAB hace que cada móvil descargue solo su parte (~30-40 MB).
 - [ ] **Calidad de `foods.db`:** unir duplicados casi iguales ("Jamon serrano" y "jamón serrano"), y decidir qué hacer con unos 12 000 productos cuyas kcal no cuadran con sus macros.
 - [ ] **Versión de `foods.db` automática:** hoy hay que cambiar `FOODS_DB_NAME` (`foods-1.db` → `foods-2.db`) a mano al regenerarla.
 - [ ] **Fecha del volcado de Open Food Facts** usado: dejarla anotada para que el resultado sea reproducible.
@@ -245,7 +249,8 @@ Una APK es el instalador de Android. Se puede pasar por mensaje y se instala sin
 ```bash
 cd app
 npx eas-cli@latest login        # cuenta gratuita de expo.dev
-npx eas-cli@latest build -p android --profile preview
+npx eas-cli@latest build -p android --profile preview            # para los amigos (móviles ARM)
+npx eas-cli@latest build -p android --profile preview-emulator  # para probar en el emulador del PC (x86_64)
 ```
 
 La primera vez pregunta si crear el proyecto en tu cuenta de Expo y si generar la clave de firma: di que sí. Al terminar da un enlace para descargar la APK. EAS guarda la clave de firma: **no la pierdas**, porque las actualizaciones tienen que ir firmadas con la misma para instalarse encima conservando los datos.

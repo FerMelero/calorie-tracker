@@ -29,7 +29,7 @@ export default function BackupScreen() {
       const backup = await buildBackup();
       const file = new File(Paths.cache, `calorie-tracker-${todayISO()}.json`);
       file.create({ overwrite: true });
-      file.write(JSON.stringify(backup, null, 2));
+      await file.write(JSON.stringify(backup, null, 2));
 
       if (!(await Sharing.isAvailableAsync())) {
         setErrors(['Este dispositivo no permite compartir archivos.']);
@@ -41,7 +41,7 @@ export default function BackupScreen() {
         UTI: 'public.json',
       });
       setMessage(
-        `Copia creada: ${backup.entries.length} registros y ${backup.custom_foods.length} alimentos propios.`,
+        `Copia creada: ${backup.entries.length} registros, ${backup.custom_foods.length} alimentos propios y ${backup.favorites.length} favoritos.`,
       );
     } catch (e) {
       setErrors([`No se pudo exportar: ${e instanceof Error ? e.message : String(e)}`]);
@@ -80,7 +80,7 @@ export default function BackupScreen() {
       const { data } = result;
       Alert.alert(
         'Importar copia de seguridad',
-        `Se van a añadir hasta ${data.custom_foods.length} alimentos propios y ${data.entries.length} registros del diario ` +
+        `Se van a añadir hasta ${data.custom_foods.length} alimentos propios, ${data.favorites.length} favoritos y ${data.entries.length} registros del diario ` +
           '(los que ya tengas no se duplican).' +
           (data.goals ? '\n\nTus objetivos actuales se reemplazarán por los del archivo.' : ''),
         [
@@ -91,7 +91,7 @@ export default function BackupScreen() {
               try {
                 const s = await importBackup(data);
                 setMessage(
-                  `Importado: ${s.addedEntries} registros y ${s.addedFoods} alimentos nuevos` +
+                  `Importado: ${s.addedEntries} registros, ${s.addedFoods} alimentos propios y ${s.addedFavorites} favoritos nuevos` +
                     (s.skippedEntries + s.skippedFoods > 0
                       ? ` (${s.skippedEntries + s.skippedFoods} ya existían).`
                       : '.') +
@@ -117,7 +117,7 @@ export default function BackupScreen() {
         <Card>
           <ThemedText type="smallBold">Exportar</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Guarda en un archivo tu diario, tus alimentos propios y tus objetivos. Es tu única copia de
+            Guarda en un archivo tu diario, tus alimentos propios, tus favoritos y tus objetivos. Es tu única copia de
             seguridad: la app no usa cuentas ni servidores.
           </ThemedText>
           <Button label="Exportar mis datos" onPress={exportData} disabled={busy} />

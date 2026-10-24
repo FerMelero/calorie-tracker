@@ -14,6 +14,7 @@ import {
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type ScrollViewInstance,
   type ScrollViewProps,
 } from 'react-native';
 
@@ -33,7 +34,7 @@ export function useEnsureVisible() {
  * calcula a mano: se mide dónde está el campo y dónde empieza el teclado.
  */
 export function KeyboardAwareScrollView({ children, onScroll, ...rest }: ScrollViewProps) {
-  const ref = useRef<ScrollView>(null);
+  const ref = useRef<ScrollViewInstance>(null);
   const offsetY = useRef(0);
   const keyboardTop = useRef<number | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);

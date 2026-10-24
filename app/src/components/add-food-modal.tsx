@@ -14,16 +14,18 @@ type Props = {
   food: Food | null;
   /** Franja preseleccionada (si se viene desde el botón + de una franja) */
   defaultMeal?: MealKey;
+  /** Cantidad con la que abre (por ejemplo, la última que usaste con este alimento) */
+  defaultGrams?: number;
   /** Día al que se añade (YYYY-MM-DD); por defecto, hoy */
   date?: string;
   onClose: () => void;
 };
 
 /** Ventana para elegir franja y cantidad antes de añadir un alimento al diario de hoy. */
-export function AddFoodModal({ food, defaultMeal, date, onClose }: Props) {
+export function AddFoodModal({ food, defaultMeal, defaultGrams, date, onClose }: Props) {
   const theme = useTheme();
   const [meal, setMeal] = useState<MealKey>(defaultMeal ?? 'desayuno');
-  const [gramsText, setGramsText] = useState('100');
+  const [gramsText, setGramsText] = useState(String(defaultGrams ?? 100));
 
   const grams = Number(gramsText.replace(',', '.'));
   const valid = Number.isFinite(grams) && grams > 0;

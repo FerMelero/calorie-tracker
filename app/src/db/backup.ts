@@ -1,3 +1,4 @@
+import { favoriteKey, listFavoritesForBackup } from '@/db/favorites';
 import { getGoals, saveGoals } from '@/db/goals';
 import { getUserDb } from '@/db/user';
 import { normalize } from '@/lib/text';
@@ -25,6 +26,7 @@ export async function buildBackup(): Promise<Backup> {
     format_version: BACKUP_FORMAT_VERSION,
     exported_at: new Date().toISOString(),
     custom_foods: customFoods,
+    favorites: await listFavoritesForBackup(),
     entries,
     goals: await getGoals(),
   };
@@ -33,6 +35,7 @@ export async function buildBackup(): Promise<Backup> {
 export type ImportSummary = {
   addedFoods: number;
   skippedFoods: number;
+  addedFavorites: number;
   addedEntries: number;
   skippedEntries: number;
   goalsReplaced: boolean;
@@ -50,7 +53,7 @@ const entryKey = (e: EntryInput) =>
 export async function importBackup(backup: Backup): Promise<ImportSummary> {
   const db = getUserDb();
   const summary: ImportSummary = {
-    addedFoods: 0, skippedFoods: 0, addedEntries: 0, skippedEntries: 0, goalsReplaced: false,
+    addedFoods: 0, skippedFoods: 0, addedFavorites: 0, addedEntries: 0, skippedEntries: 0, goalsReplaced: false,
   };
 
   await db.withTransactionAsync(async () => {
@@ -72,6 +75,16 @@ export async function importBackup(backup: Backup): Promise<ImportSummary> {
          normalize(`${f.name} ${f.brand ?? ''}`.trim())],
       );
       summary.addedFoods++;
+    }
+
+    for (const f of backup.favorites) {
+      // INSERT OR IGNORE: la clave es única, así que un favorito repetido simplemente se salta
+      const result = await db.runAsync(
+        `INSERT OR IGNORE INTO favorites (key, source, source_id, name, brand, kcal, protein, carbs, fat, sugars, fiber, salt)
+         VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [favoriteKey(f), f.source, f.name, f.brand, f.kcal, f.protein, f.carbs, f.fat, f.sugars, f.fiber, f.salt],
+      );
+      summary.addedFavorites += result.changes;
     }
 
     const existingEntries = await db.getAllAsync<EntryInput>(

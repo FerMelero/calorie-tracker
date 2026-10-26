@@ -7,6 +7,7 @@
  * de seguridad antes de importarlas.
  */
 
+import { cleanBarcode } from '@/lib/barcode';
 import { isValidISODate } from '@/lib/dates';
 
 export const MEAL_KEYS = ['desayuno', 'comida', 'snacks', 'merienda', 'cena'] as const;
@@ -30,6 +31,8 @@ export const LIMITS = {
 export type CustomFoodInput = {
   name: string;
   brand: string | null;
+  /** Código de barras (solo dígitos, 6 a 14). Opcional. */
+  barcode?: string | null;
   kcal: number;
   protein: number;
   carbs: number;
@@ -159,6 +162,13 @@ export function validateCustomFood(
 
   const name = readText(raw.name, `${path}.name`, LIMITS.NAME_MIN, LIMITS.NAME_MAX, errors);
   const brand = readOptionalText(raw.brand, `${path}.brand`, LIMITS.BRAND_MAX, errors);
+  // Código de barras: opcional; si viene, solo dígitos y entre 6 y 14
+  let barcode: string | null = null;
+  if (raw.barcode !== undefined && raw.barcode !== null && !(typeof raw.barcode === 'string' && raw.barcode.trim() === '')) {
+    const text = typeof raw.barcode === 'string' ? raw.barcode.trim() : '';
+    if (/^\d{6,14}$/.test(text) && cleanBarcode(text) === text) barcode = text;
+    else errors.push(`${path}.barcode: tiene que tener solo dígitos, entre 6 y 14`);
+  }
   const kcal = readNumber(raw.kcal, `${path}.kcal`, 0, LIMITS.KCAL_MAX, errors);
   const protein = readNumber(raw.protein, `${path}.protein`, 0, 100, errors);
   const carbs = readNumber(raw.carbs, `${path}.carbs`, 0, 100, errors);
@@ -180,7 +190,7 @@ export function validateCustomFood(
   return {
     ok: true,
     data: {
-      name, brand, kcal: round1(kcal), protein: round1(protein), carbs: round1(carbs), fat: round1(fat),
+      name, brand, barcode, kcal: round1(kcal), protein: round1(protein), carbs: round1(carbs), fat: round1(fat),
       sugars: sugars === null ? null : round1(sugars),
       fiber: fiber === null ? null : round1(fiber),
       salt: salt === null ? null : round1(salt),

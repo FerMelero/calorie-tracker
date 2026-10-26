@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { searchCustomFoods } from '@/db/custom-foods';
+import { customToFood, findCustomByBarcode, searchCustomFoods } from '@/db/custom-foods';
+import { barcodeKey, cleanBarcode } from '@/lib/barcode';
 import { normalize, tokenize } from '@/lib/text';
 
 export type Food = {
@@ -148,4 +149,25 @@ export async function searchFoods(db: SQLiteDatabase, rawQuery: string): Promise
     .sort((a, b) => b.rank - a.rank || b.score - a.score)
     .slice(0, MAX_RESULTS)
     .map(({ food, score }) => ({ ...food, similarity: score }));
+}
+
+/**
+ * Busca un producto por su código de barras. Primero entre los alimentos propios del usuario y
+ * luego en foods.db. Un EAN-13 y su UPC de 12 dígitos cuentan como el mismo código.
+ * Devuelve null si el código no es válido o no está en ninguna de las dos.
+ */
+export async function findFoodByBarcode(db: SQLiteDatabase, raw: string): Promise<Food | null> {
+  const code = cleanBarcode(raw);
+  if (code === null) return null;
+
+  const custom = await findCustomByBarcode(code);
+  if (custom) return customToFood(custom);
+
+  const row = await db.getFirstAsync<Omit<Food, 'source'>>(
+    `SELECT id, barcode, name, brand, kcal, protein, carbs, fat, sugars, fiber, salt
+     FROM foods WHERE ltrim(barcode, '0') = ?
+     ORDER BY (brand_rank IS NULL), brand_rank, scans DESC LIMIT 1`,
+    [barcodeKey(code)],
+  );
+  return row ? { ...row, source: 'db' } : null;
 }

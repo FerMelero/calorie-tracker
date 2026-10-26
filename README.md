@@ -23,12 +23,14 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 | **Datos** | `foods.db` con ~185 000 alimentos de España (Open Food Facts), limpios y sin duplicados exactos, ~28 MB, con búsqueda de texto rápida (FTS5). Cada alimento lleva su prioridad de marca y su popularidad. |
 | **Buscar** | Búsqueda en español, sin importar mayúsculas ni tildes, con porcentaje de parecido y resultados de 10 en 10. Orden: supermercados primero (Mercadona/Hacendado, Carrefour, Lidl, Dia, Aldi…), luego marcas conocidas y productos más escaneados; los alimentos propios tienen ventaja. |
 | **Registro rápido** | Pestañas **Recientes** (abren con la última cantidad usada) y **Favoritos ★**, y **Copiar de otro día** (uno de los últimos 14 días, eligiendo las franjas). |
+| **Escáner de códigos de barras** | Botón 📷 en Buscar. Lee EAN/UPC con la cámara y lo compara con `foods.db` y con los alimentos propios (sin internet; un EAN-13 y su UPC de 12 dígitos cuentan como el mismo). Si está, abre directamente la ventana de añadir. Si no, ofrece **crearlo uno mismo** (el formulario ya trae el código, y al guardarlo se abre para añadirlo), escanear otro, o **sugerir el alimento por correo**. No se guarda ninguna foto y no se envía nada. |
 | **Hoy** | Diario con 5 franjas (desayuno, comida, snacks, merienda, cena), total del día frente al objetivo, macros con barras, y botón **+** en cada franja que abre Buscar con esa franja elegida. |
 | **Editar** | Los gramos se eligen al añadir (con vista previa de kcal y macros) y se pueden cambiar después, junto con la franja. |
 | **Historial** | Lista de días con sus totales; al tocar uno se ve el detalle y se puede añadir, editar o quitar comida de ese día. |
 | **Objetivos** | El usuario elige sus kcal y macros, o los calcula con Mifflin-St Jeor (sexo, edad, peso, altura, actividad y objetivo). |
-| **Mis alimentos** | El usuario crea los suyos (se guardan en `user.db`) y salen en Buscar con 🥣. |
+| **Mis alimentos** | El usuario crea los suyos (se guardan en `user.db`, con código de barras opcional) y salen en Buscar con 🥣. |
 | **Copia de seguridad** | Exportar e importar JSON (diario, alimentos propios, favoritos y objetivos), validando el formato antes de importar; los duplicados se saltan. |
+| **Sugerencias** | En Más, tarjeta con el correo de sugerencias y un botón que abre el correo del móvil con el mensaje preparado (no envía nada solo). Solo sale cuando `SUGGESTIONS_EMAIL` tiene valor. |
 | **Más → Acerca de** | Atribución a Open Food Facts (ODbL) y aviso de que los objetivos son estimaciones. |
 | **Identidad y build** | Nombre "Contador de Calorías", paquete `com.fernando.contadorcalorias`, icono y pantalla de carga propios, `eas.json` con perfiles `preview` (móviles) y `preview-emulator`, `.easignore`. Expo SDK 58. |
 
@@ -37,11 +39,11 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 | | Estado |
 |---|---|
 | La APK `v0.1.0` | Se instaló y se usó. **Fallo encontrado:** el teclado tapaba los campos (solo en la APK, no en Expo Go). El resto no se ha comprobado de forma sistemática: falta pasar la lista de "Lo que Expo Go no reproduce", y confirmar en concreto que la búsqueda (FTS5) funciona en la APK. |
-| Hecho pero **sin comprobar en una APK** | Arreglo del teclado, reducción del tamaño por arquitecturas, subida a SDK 58 (con R8 activado por defecto), recientes, favoritos, copiar de otro día y el nuevo orden por marcas. Antes de sacar `v0.1.1` hay que probarlos con la lista de "Lo que Expo Go no reproduce". |
+| Hecho pero **sin comprobar en una APK** | Escáner de códigos de barras (módulo nativo nuevo: necesita APK nueva), arreglo del teclado, reducción del tamaño por arquitecturas, subida a SDK 58 (con R8 activado por defecto), recientes, favoritos, copiar de otro día y el nuevo orden por marcas. Antes de sacar `v0.1.1` hay que probarlos con la lista de "Lo que Expo Go no reproduce". |
 
 ### Siguiente en la lista
 
-Ver **"Pendiente y mejoras"**. Lo más inmediato: probar una APK nueva desde `develop` y, después, el escáner de códigos de barras (hay una decisión de diseño abierta: ver ese punto).
+Ver **"Pendiente y mejoras"**. Lo más inmediato: **poner el correo de sugerencias** en `app/src/constants/contact.ts` y probar una APK nueva (con el escáner, el teclado y el nuevo orden de resultados).
 
 ## Estructura del repo
 
@@ -63,6 +65,10 @@ calorie-tracker/
 │   │   ├── form-controls.tsx   #     Botones de elección, campos numéricos y botones − / +
 │   │   ├── day-view.tsx        #     Resumen de un día (lo usan Hoy y el detalle del Historial)
 │   │   ├── themed-stack.tsx    #     Navegación con cabecera nativa con los colores de la app
+│   │   ├── barcode-scanner-modal.tsx # Cámara que lee códigos de barras
+│   │   ├── barcode-not-found-modal.tsx # Qué hacer si el código no está (crear, escanear otro, sugerir)
+│   │   ├── custom-food-form.tsx #    Formulario de alimento propio (lo usan Más y el escáner)
+│   │   ├── full-screen-modal.tsx #   Pantalla completa con título y botón Cerrar
 │   │   ├── food-card.tsx       #     Tarjeta de un alimento con estrella de favorito
 │   │   ├── copy-day-modal.tsx  #     Ventana para copiar franjas de otro día
 │   │   ├── bottom-sheet-modal.tsx #  Ventana inferior que se aparta del teclado
@@ -77,9 +83,11 @@ calorie-tracker/
 │   │   ├── custom-foods.ts     #     Alimentos propios (tabla custom_foods de user.db)
 │   │   ├── favorites.ts        #     Favoritos (tabla favorites de user.db)
 │   │   └── backup.ts           #     Construir la copia de seguridad e importarla
+│   ├── src/constants/contact.ts #  Correo de sugerencias (SUGGESTIONS_EMAIL) y apertura del correo
 │   ├── src/lib/                #   Funciones puras (sin Expo)
 │   │   ├── nutrition.ts        #     Fórmula de Mifflin-St Jeor y reparto de macros
 │   │   ├── validation.ts       #     Reglas del formato de datos (alimentos, diario, objetivos, copia)
+│   │   ├── barcode.ts          #     Limpiar y comparar códigos de barras (EAN-13 / UPC)
 │   │   ├── text.ts             #     Normalizar texto (sin tildes) y separar palabras
 │   │   └── dates.ts            #     Fechas ISO y formato largo en español
 │   ├── src/constants/theme.ts  #   Colores, espacios y colores de los macros
@@ -107,6 +115,7 @@ calorie-tracker/
 | Guardar algo nuevo en el diario (campos, tablas) | `app/src/db/user.ts` (nueva migración subiendo `USER_DB_VERSION`) |
 | Cambiar qué se considera un dato válido (importar / alimentos propios) | `app/src/lib/validation.ts` |
 | Cambiar la fórmula de objetivos o sus rangos | `app/src/lib/nutrition.ts` |
+| Poner o cambiar el correo de sugerencias | `app/src/constants/contact.ts` (`SUGGESTIONS_EMAIL`) |
 | Cambiar colores o espacios | `app/src/constants/theme.ts` |
 | Añadir o renombrar una pestaña | un archivo en `app/src/app/` + `app/src/components/app-tabs.tsx` |
 
@@ -189,6 +198,7 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
 - [ ] **Licencia del código:** `app/LICENSE` es la MIT de la plantilla de Expo (con el copyright de Expo). Sustituirla por una propia y añadir un `LICENSE` en la raíz.
 - [ ] **Licencia de los datos (ODbL):** publicar `foods.db` (o el modo de generarlo) en abierto y enlazarlo desde "Más → Acerca de". Hay que hacerlo si se distribuye la app.
 - [ ] **Ampliar `pipeline/brands.py`**: la lista de marcas conocidas es corta (~100) y hecha a mano; revisar qué marcas faltan o están mal asignadas.
+- [ ] **Poner el correo de sugerencias** en `app/src/constants/contact.ts` (`SUGGESTIONS_EMAIL`, hoy vacío). Mientras esté vacío, ni la tarjeta de Más ni el botón del escáner se muestran.
 - [ ] **Datos incompletos:** en el total del día, avisar cuando algún alimento tenga fibra, azúcares o sal en `NULL` (hoy se suman como 0 sin decir nada).
 - [ ] **Probar en más dispositivos** (otras versiones de Android, pantallas pequeñas, modo oscuro, texto grande).
 
@@ -198,7 +208,8 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
 - [ ] **Recetas:** alimento compuesto cuyos valores por 100 g se calculan desde los ingredientes. Rama `feature/recetas`.
 - [ ] **Porciones y unidades** ("1 yogur", "1 cucharada") además de gramos.
 - [ ] **Mostrar fibra, azúcares y sal** en la interfaz (ya se guardan).
-- [ ] **Escáner de códigos de barras** (`foods.barcode` ya existe en la base). Diseño propuesto, en este orden: (1) buscar el código en `foods.db` (offline); (2) si no está, **ofrecer** consultarlo en la API de Open Food Facts, que devuelve kcal, macros y demás por 100 g, y guardarlo como alimento propio; (3) si tampoco está, abrir el formulario de alimento propio con el código ya puesto (hay que añadir `barcode` a los alimentos propios y a la copia de seguridad). **Decisión abierta:** el paso 2 rompe el "todo offline" (se envía el código a un tercero) y obliga a declararlo en la política de privacidad y en la seguridad de datos de Play Store; tiene que ser opcional y con aviso. Hay que normalizar los códigos (EAN-13 / UPC de 12 dígitos) al compararlos. Comprobar en la documentación si la cámara funciona en Expo Go.
+- [ ] **Escáner: consulta opcional a Open Food Facts** para traer productos que no están en `foods.db`. Se decidió **no hacerlo por ahora** para mantener la app 100 % offline (el escáner solo mira la base y los alimentos propios). Si algún día se hace: sería opcional y con aviso, y habría que declararlo en la política de privacidad y en Play Store.
+- [ ] **Escáner: códigos UPC-E** (8 dígitos comprimidos) no se expanden a 12 dígitos, así que no coincidirían con `foods.db`. Poco habitual en España.
 - [ ] **Registro de peso y gráficas** de evolución (calorías por semana, peso).
 - [ ] **Mover un registro a otro día** (hoy se edita gramos y franja, no la fecha).
 - [ ] **Varios perfiles en el mismo móvil** (hoy hay un único usuario por dispositivo).
@@ -231,7 +242,7 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
 - [ ] Cuenta de desarrollador (unos 25 USD) y verificación de identidad.
 - [ ] Prueba cerrada con testers durante varias semanas (comprobar los requisitos vigentes en la Play Console).
 - [ ] Política de privacidad con enlace público (la app maneja datos de salud, aunque sean locales).
-- [ ] Formularios de la consola: seguridad de datos, apps de salud, clasificación por edades, público objetivo.
+- [ ] Formularios de la consola: seguridad de datos (la app usa la cámara solo para leer códigos; no se guardan imágenes ni se envía nada), apps de salud, clasificación por edades, público objetivo.
 - [ ] Ficha: descripción, capturas, gráfico de portada de 1024×500 (el icono de 512 está en `docs/branding/iconkitchen/android/`).
 - [ ] Generar el **AAB** con el perfil `production` de `eas.json` y subirlo.
 - [ ] iOS: App Store (99 USD al año), sin probar todavía.
@@ -259,6 +270,7 @@ Por eso, antes de dar un fallo por arreglado hay que probarlo en una APK. Lista 
 - [ ] Más → Mis alimentos → Nuevo alimento: los campos de abajo (grasas, fibra, sal) quedan por encima del teclado.
 - [ ] Buscar sin escribir: aparecen Recientes (con la última cantidad al tocar) y Favoritos; la estrella añade y quita.
 - [ ] Hoy → "Copiar de otro día": elige día y franjas, y se copian al día actual.
+- [ ] Escáner (📷 en Buscar): pide permiso de cámara la primera vez; un producto conocido (p. ej. algo de Hacendado) abre directamente la ventana de añadir; un código inventado muestra "No lo encontramos" con las opciones; "Crear este alimento" abre el formulario con el código ya puesto y, al guardar, se abre para añadirlo; con la luz apagada, el botón 🔦 enciende el flash. Al escanear de nuevo ese código, ya sale el alimento creado.
 - [ ] Todo lo anterior en modo oscuro y con el texto del sistema en tamaño grande.
 
 Cuando haya varios arreglos pendientes, genera una sola APK `preview` para probarlos juntos (los builds gratuitos son limitados).

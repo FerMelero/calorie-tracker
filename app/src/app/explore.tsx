@@ -6,15 +6,21 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddFoodModal } from '@/components/add-food-modal';
+import { BarcodeNotFoundModal } from '@/components/barcode-not-found-modal';
+import { BarcodeScannerModal } from '@/components/barcode-scanner-modal';
 import { Button } from '@/components/button';
+import { CustomFoodForm } from '@/components/custom-food-form';
 import { FoodCard } from '@/components/food-card';
 import { Chips } from '@/components/form-controls';
+import { FullScreenModal } from '@/components/full-screen-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, Spacing } from '@/constants/theme';
+import { customToFood, getCustomFood } from '@/db/custom-foods';
 import { favoriteKey, listFavorites, toggleFavorite } from '@/db/favorites';
-import { searchFoods, type Food, type FoodResult } from '@/db/search';
+import { findFoodByBarcode, searchFoods, type Food, type FoodResult } from '@/db/search';
 import { getRecentFoods, MEALS, todayISO, type RecentFood } from '@/db/user';
+import { cleanBarcode } from '@/lib/barcode';
 import { formatLongDate, isValidISODate } from '@/lib/dates';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -52,6 +58,12 @@ export default function BuscarScreen() {
   const [tab, setTab] = useState<Tab>('recent');
   const [recents, setRecents] = useState<RecentFood[]>([]);
   const [favorites, setFavorites] = useState<Food[]>([]);
+
+  // Escáner de códigos de barras
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanRun, setScanRun] = useState(0); // cambia en cada apertura para que la cámara empiece limpia
+  const [unknownCode, setUnknownCode] = useState<string | null>(null);
+  const [creatingCode, setCreatingCode] = useState<string | null>(null);
 
   const loadLists = useCallback(async () => {
     setRecents(await getRecentFoods());
@@ -103,6 +115,30 @@ export default function BuscarScreen() {
     return favorites.map((f) => ({ key: `fav-${favoriteKey(f)}`, food: f, note: 'por 100 g' }));
   }, [searching, results, visible, tab, recents, favorites]);
 
+  function openScanner() {
+    Keyboard.dismiss();
+    setScanRun((n) => n + 1);
+    setScanOpen(true);
+  }
+
+  async function onScanned(rawCode: string) {
+    setScanOpen(false);
+    const food = await findFoodByBarcode(db, rawCode);
+    if (food) {
+      // Está en la base (o es un alimento propio): se abre directamente para añadirlo
+      setSelected({ key: `scan-${food.source}-${food.id}`, food, note: '' });
+    } else {
+      setUnknownCode(cleanBarcode(rawCode) ?? rawCode);
+    }
+  }
+
+  async function onCreated(id: number) {
+    setCreatingCode(null);
+    const created = await getCustomFood(id);
+    if (created) setSelected({ key: `new-${id}`, food: customToFood(created), note: '' });
+    loadLists();
+  }
+
   async function onToggleFavorite(food: Food) {
     await toggleFavorite(food);
     await loadLists();
@@ -130,6 +166,13 @@ export default function BuscarScreen() {
                 <ThemedText themeColor="textSecondary">✕</ThemedText>
               </Pressable>
             ) : null}
+            <Pressable
+              onPress={openScanner}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Escanear código de barras">
+              <ThemedText style={styles.scanIcon}>📷</ThemedText>
+            </Pressable>
           </View>
 
           {mealFromHome ? (
@@ -205,6 +248,27 @@ export default function BuscarScreen() {
           )}
         />
       </SafeAreaView>
+      <BarcodeScannerModal
+        key={`scan-${scanRun}`}
+        visible={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onScanned={onScanned}
+      />
+      <BarcodeNotFoundModal
+        code={unknownCode}
+        onClose={() => setUnknownCode(null)}
+        onScanAgain={() => {
+          setUnknownCode(null);
+          openScanner();
+        }}
+        onCreate={() => {
+          setCreatingCode(unknownCode);
+          setUnknownCode(null);
+        }}
+      />
+      <FullScreenModal visible={creatingCode !== null} title="Nuevo alimento" onClose={() => setCreatingCode(null)}>
+        <CustomFoodForm initialBarcode={creatingCode ?? undefined} onSaved={onCreated} />
+      </FullScreenModal>
       <AddFoodModal
         key={selected?.key ?? 'none'}
         food={selected?.food ?? null}
@@ -233,6 +297,7 @@ const styles = StyleSheet.create({
     boxShadow: '0 2px 12px rgba(0, 0, 0, 0.06)',
   },
   searchIcon: { fontSize: 16 },
+  scanIcon: { fontSize: 22, lineHeight: 26 },
   input: { flex: 1, paddingVertical: 14, fontSize: 16 },
   notice: { borderRadius: 12, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   list: { paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.six },

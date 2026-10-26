@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 
 import { useEnsureVisible } from '@/components/keyboard-aware-scroll-view';
 import { ThemedText } from '@/components/themed-text';
@@ -79,10 +79,11 @@ type TextFieldProps = {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
+  keyboardType?: KeyboardTypeOptions;
 };
 
 /** Campo de texto con etiqueta (nombre, marca...). */
-export function TextField({ label, value, onChangeText, placeholder }: TextFieldProps) {
+export function TextField({ label, value, onChangeText, placeholder, keyboardType }: TextFieldProps) {
   const theme = useTheme();
   const ensureVisible = useEnsureVisible();
   return (
@@ -95,6 +96,7 @@ export function TextField({ label, value, onChangeText, placeholder }: TextField
         onChangeText={onChangeText}
         onFocus={ensureVisible}
         placeholder={placeholder}
+        keyboardType={keyboardType}
         placeholderTextColor={theme.textSecondary}
         style={[styles.textInput, { color: theme.text, backgroundColor: theme.backgroundElement }]}
       />

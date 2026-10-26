@@ -38,7 +38,7 @@ export type Entry = {
   salt: number | null;
 };
 
-const USER_DB_VERSION = 4;
+const USER_DB_VERSION = 5;
 
 let db: SQLiteDatabase | null = null;
 
@@ -136,6 +136,10 @@ function migrate(database: SQLiteDatabase) {
         salt      REAL
       );
     `);
+  }
+  if (current < 5) {
+    // Código de barras de los alimentos propios (para encontrarlos al escanear)
+    database.execSync('ALTER TABLE custom_foods ADD COLUMN barcode TEXT;');
   }
   database.execSync(`PRAGMA user_version = ${USER_DB_VERSION}`);
 }

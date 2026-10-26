@@ -1,9 +1,11 @@
 import { router, type Href } from 'expo-router';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { openSuggestionMail, SUGGESTIONS_EMAIL } from '@/constants/contact';
 import { Spacing } from '@/constants/theme';
 
 const ITEMS: { icon: string; title: string; description: string; href: Href }[] = [
@@ -44,6 +46,33 @@ export default function MoreScreen() {
             </Card>
           </Pressable>
         ))}
+
+        {SUGGESTIONS_EMAIL !== '' ? (
+          <Card>
+            <ThemedText type="smallBold">Sugerencias</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              ¿Echas en falta algún alimento o tienes una idea para mejorar la app? Escríbenos a{' '}
+              {SUGGESTIONS_EMAIL}. Si buscas un producto concreto, indica su nombre, marca y supermercado (o
+              su código de barras) y, si puedes, una foto de la tabla nutricional.
+            </ThemedText>
+            <Button
+              label="Enviar sugerencia por correo"
+              onPress={async () => {
+                const opened = await openSuggestionMail('Sugerencia', '');
+                if (!opened) {
+                  Alert.alert('No se pudo abrir el correo', `Puedes escribirnos a ${SUGGESTIONS_EMAIL}.`);
+                }
+              }}
+            />
+          </Card>
+        ) : __DEV__ ? (
+          <Card>
+            <ThemedText type="smallBold">Sugerencias (solo desarrollo)</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Esta tarjeta aparece cuando pones tu correo en SUGGESTIONS_EMAIL, en src/constants/contact.ts.
+            </ThemedText>
+          </Card>
+        ) : null}
 
         <Card>
           <ThemedText type="smallBold">Acerca de</ThemedText>

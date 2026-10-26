@@ -14,19 +14,34 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 
 ## Estado del proyecto
 
-- ✅ Pipeline: filtra Open Food Facts (España) y genera `foods.db` (~185 000 alimentos, ~28 MB) con búsqueda de texto.
-- ✅ Buscar: búsqueda en español, sin importar mayúsculas ni tildes, con porcentaje de parecido. Los resultados salen de 10 en 10 (botón "Ver más").
-- ✅ Hoy: diario del día con 5 franjas (desayuno, comida, snacks, merienda, cena), total del día y total por franja.
-- ✅ Objetivos: el usuario elige sus kcal y macros o los calcula con Mifflin-St Jeor (sexo, edad, peso, altura, actividad y objetivo). Hoy muestra el progreso frente al objetivo y cada franja tiene un botón + que abre Buscar con esa franja ya elegida.
-- ✅ Historial: lista de días con sus totales; al tocar uno se ve el detalle y se puede añadir o quitar comida de ese día.
-- ✅ Mis alimentos: el usuario crea los suyos (se guardan en `user.db`) y salen en Buscar con ⭐.
-- ✅ Copia de seguridad: exportar e importar JSON, validando el formato antes de importar.
-- ✅ Los gramos se eligen al añadir un alimento (con vista previa de kcal y macros) y se pueden editar después, junto con la franja (botón "Editar" en cada registro).
-- ✅ Nombre ("Contador de Calorías") y paquete (`com.fernando.contadorcalorias`) definidos; `eas.json` y `.easignore` listos.
-- ✅ Icono, icono adaptativo de Android y pantalla de carga propios.
-- ✅ Orden de los resultados: primero supermercados (Mercadona/Hacendado, Carrefour, Lidl, Dia, Aldi…), luego marcas conocidas y los productos más escaneados en Open Food Facts; los alimentos propios tienen ventaja.
-- ✅ Registro rápido: pestañas **Recientes** y **Favoritos (★)** en Buscar (los recientes abren con la última cantidad usada) y **Copiar de otro día** (elige uno de los últimos 14 días y las franjas a copiar).
-- ⏳ Pendiente: ver la sección "Pendiente y mejoras".
+**Versión publicada:** `v0.1.0` (APK de prueba para Android). **En desarrollo:** `v0.1.1` (rama `develop`), todavía sin APK.
+
+### Funciones hechas
+
+| Área | Qué hay |
+|---|---|
+| **Datos** | `foods.db` con ~185 000 alimentos de España (Open Food Facts), limpios y sin duplicados exactos, ~28 MB, con búsqueda de texto rápida (FTS5). Cada alimento lleva su prioridad de marca y su popularidad. |
+| **Buscar** | Búsqueda en español, sin importar mayúsculas ni tildes, con porcentaje de parecido y resultados de 10 en 10. Orden: supermercados primero (Mercadona/Hacendado, Carrefour, Lidl, Dia, Aldi…), luego marcas conocidas y productos más escaneados; los alimentos propios tienen ventaja. |
+| **Registro rápido** | Pestañas **Recientes** (abren con la última cantidad usada) y **Favoritos ★**, y **Copiar de otro día** (uno de los últimos 14 días, eligiendo las franjas). |
+| **Hoy** | Diario con 5 franjas (desayuno, comida, snacks, merienda, cena), total del día frente al objetivo, macros con barras, y botón **+** en cada franja que abre Buscar con esa franja elegida. |
+| **Editar** | Los gramos se eligen al añadir (con vista previa de kcal y macros) y se pueden cambiar después, junto con la franja. |
+| **Historial** | Lista de días con sus totales; al tocar uno se ve el detalle y se puede añadir, editar o quitar comida de ese día. |
+| **Objetivos** | El usuario elige sus kcal y macros, o los calcula con Mifflin-St Jeor (sexo, edad, peso, altura, actividad y objetivo). |
+| **Mis alimentos** | El usuario crea los suyos (se guardan en `user.db`) y salen en Buscar con 🥣. |
+| **Copia de seguridad** | Exportar e importar JSON (diario, alimentos propios, favoritos y objetivos), validando el formato antes de importar; los duplicados se saltan. |
+| **Más → Acerca de** | Atribución a Open Food Facts (ODbL) y aviso de que los objetivos son estimaciones. |
+| **Identidad y build** | Nombre "Contador de Calorías", paquete `com.fernando.contadorcalorias`, icono y pantalla de carga propios, `eas.json` con perfiles `preview` (móviles) y `preview-emulator`, `.easignore`. Expo SDK 58. |
+
+### Qué está probado y qué no
+
+| | Estado |
+|---|---|
+| La APK `v0.1.0` | Se instaló y se usó. **Fallo encontrado:** el teclado tapaba los campos (solo en la APK, no en Expo Go). El resto no se ha comprobado de forma sistemática: falta pasar la lista de "Lo que Expo Go no reproduce", y confirmar en concreto que la búsqueda (FTS5) funciona en la APK. |
+| Hecho pero **sin comprobar en una APK** | Arreglo del teclado, reducción del tamaño por arquitecturas, subida a SDK 58 (con R8 activado por defecto), recientes, favoritos, copiar de otro día y el nuevo orden por marcas. Antes de sacar `v0.1.1` hay que probarlos con la lista de "Lo que Expo Go no reproduce". |
+
+### Siguiente en la lista
+
+Ver **"Pendiente y mejoras"**. Lo más inmediato: probar una APK nueva desde `develop` y, después, el escáner de códigos de barras (hay una decisión de diseño abierta: ver ese punto).
 
 ## Estructura del repo
 
@@ -168,21 +183,22 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
 
 ### 🔴 Antes de dar la app a más gente
 
-- [ ] **El teclado tapaba los campos en la APK** (en Expo Go no pasaba). Arreglo hecho en `fix/teclado-apk` (`bottom-sheet-modal.tsx`, `keyboard-aware-scroll-view.tsx`); **falta confirmarlo en una APK nueva** (ver "Lo que Expo Go no reproduce").
-- [ ] Otros bugs encontrados en las pruebas de la APK `v0.1.0`: describirlos aquí y abrir `fix/…`.
+- [ ] **Confirmar en una APK nueva el arreglo del teclado** (los campos quedaban tapados solo en la APK, no en Expo Go). El arreglo ya está en `develop` (`bottom-sheet-modal.tsx`, `keyboard-aware-scroll-view.tsx`); ver "Lo que Expo Go no reproduce".
+- [ ] Otros fallos encontrados en las pruebas: describirlos aquí y abrir `fix/…`.
 - [ ] **Verificar la búsqueda (FTS5) en la APK de producción**, no solo en Expo Go. Si falla, `foods.db` no se está incluyendo (revisar `.easignore`).
 - [ ] **Licencia del código:** `app/LICENSE` es la MIT de la plantilla de Expo (con el copyright de Expo). Sustituirla por una propia y añadir un `LICENSE` en la raíz.
 - [ ] **Licencia de los datos (ODbL):** publicar `foods.db` (o el modo de generarlo) en abierto y enlazarlo desde "Más → Acerca de". Hay que hacerlo si se distribuye la app.
+- [ ] **Ampliar `pipeline/brands.py`**: la lista de marcas conocidas es corta (~100) y hecha a mano; revisar qué marcas faltan o están mal asignadas.
 - [ ] **Datos incompletos:** en el total del día, avisar cuando algún alimento tenga fibra, azúcares o sal en `NULL` (hoy se suman como 0 sin decir nada).
 - [ ] **Probar en más dispositivos** (otras versiones de Android, pantallas pequeñas, modo oscuro, texto grande).
 
 ### 🟡 Funcionalidad
 
-- [ ] **Genéricos de BEDCA** (pollo, arroz, lentejas…): hoy salen solo productos de marca. Revisar antes licencia y acceso. Rama `feature/bedca-import`.
+- [ ] **Genéricos de BEDCA** (pollo, arroz, lentejas…): hoy salen solo productos de marca (con el nuevo orden, los de supermercado primero). Revisar antes licencia y acceso. Rama `feature/bedca-import`.
 - [ ] **Recetas:** alimento compuesto cuyos valores por 100 g se calculan desde los ingredientes. Rama `feature/recetas`.
 - [ ] **Porciones y unidades** ("1 yogur", "1 cucharada") además de gramos.
 - [ ] **Mostrar fibra, azúcares y sal** en la interfaz (ya se guardan).
-- [ ] **Escáner de códigos de barras** (`foods.barcode` ya existe en la base). Requiere un development build, no funciona en Expo Go.
+- [ ] **Escáner de códigos de barras** (`foods.barcode` ya existe en la base). Diseño propuesto, en este orden: (1) buscar el código en `foods.db` (offline); (2) si no está, **ofrecer** consultarlo en la API de Open Food Facts, que devuelve kcal, macros y demás por 100 g, y guardarlo como alimento propio; (3) si tampoco está, abrir el formulario de alimento propio con el código ya puesto (hay que añadir `barcode` a los alimentos propios y a la copia de seguridad). **Decisión abierta:** el paso 2 rompe el "todo offline" (se envía el código a un tercero) y obliga a declararlo en la política de privacidad y en la seguridad de datos de Play Store; tiene que ser opcional y con aviso. Hay que normalizar los códigos (EAN-13 / UPC de 12 dígitos) al compararlos. Comprobar en la documentación si la cámara funciona en Expo Go.
 - [ ] **Registro de peso y gráficas** de evolución (calorías por semana, peso).
 - [ ] **Mover un registro a otro día** (hoy se edita gramos y franja, no la fecha).
 - [ ] **Varios perfiles en el mismo móvil** (hoy hay un único usuario por dispositivo).
@@ -197,14 +213,14 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
   - [ ] **R8 viene activado por defecto desde SDK 58** en las builds de release: reduce el código pero puede romper librerías que usan reflexión. Medir el tamaño real y probar bien la app en la APK (si algo falla solo en la APK, es el primer sospechoso; se desactiva con `android.enableMinifyInReleaseBuilds: false` en `expo-build-properties`).
   - [ ] Quitar dependencias que ya no se usan (`@expo/ui`, `expo-glass-effect`, `expo-image`, `expo-device`…; **no** `expo-symbols`: en SDK 58 los iconos `md` de las pestañas en Android lo necesitan) junto con los archivos de la plantilla de Expo.
   - En Play Store, el AAB hace que cada móvil descargue solo su parte (~30-40 MB).
-- [ ] **Calidad de `foods.db`:** unir duplicados casi iguales ("Jamon serrano" y "jamón serrano"), y decidir qué hacer con unos 12 000 productos cuyas kcal no cuadran con sus macros.
-- [ ] **Versión de `foods.db` automática:** hoy hay que cambiar `FOODS_DB_NAME` (`foods-1.db` → `foods-2.db`) a mano al regenerarla.
+- [ ] **Calidad de `foods.db`:** unir duplicados casi iguales ("Jamon serrano" y "jamón serrano", "Milbona,Lidl" y "Lidl, Milbona"), y decidir qué hacer con unos 12 000 productos cuyas kcal no cuadran con sus macros.
+- [ ] **Versión de `foods.db` automática:** hoy hay que cambiar `FOODS_DB_NAME` en `_layout.tsx` (ahora `foods-2.db`) a mano al regenerar la base.
 - [ ] **Fecha del volcado de Open Food Facts** usado: dejarla anotada para que el resultado sea reproducible.
 - [ ] **Tests** de `lib/validation.ts`, `lib/nutrition.ts` y de los cálculos de `db/user.ts` (hoy se comprobaron a mano).
 - [ ] **Manejo de errores** en consultas y estados de carga (hoy un fallo de SQLite podría dejar la pantalla en blanco).
 - [ ] **Accesibilidad:** etiquetas para lectores de pantalla, contraste y tamaños de fuente.
 - [ ] **Integración continua:** GitHub Actions que ejecute `npx tsc --noEmit` y `npx expo lint` en cada Pull Request.
-- [ ] **Limpiar la plantilla de Expo:** borrar los archivos que ya no se usan (`animated-icon.*`, `external-link.tsx`, `hint-row.tsx`, `web-badge.tsx`, `ui/collapsible.tsx`, `app-tabs.web.tsx`, `expo-logo.png`, `react-logo*.png`, `expo-badge*.png`, `logo-glow.png`, `tutorial-web.png`, `assets/expo.icon/`, `tabIcons/` y `scripts/reset-project.js`) y el error de lint de `use-color-scheme.web.ts`.
+- [ ] **Limpiar la plantilla de Expo:** borrar los archivos que ya no se usan (`animated-icon.*`, `external-link.tsx`, `hint-row.tsx`, `web-badge.tsx`, `ui/collapsible.tsx`, `expo-logo.png`, `react-logo*.png`, `expo-badge*.png`, `logo-glow.png`, `tutorial-web.png`, `assets/expo.icon/`, `tabIcons/` y `scripts/reset-project.js`) y el error de lint de `use-color-scheme.web.ts`.
 - [ ] **Alinear colores:** el verde del icono (lima `#70E83D`) y el de la app (`#2E9E6B`) no coinciden. Unificarlos en `constants/theme.ts` o regenerar el icono.
 - [ ] **`pipeline/requirements.txt`** no coincide con lo que realmente usa el pipeline (`duckdb`, `pandas`); regenerarlo desde un entorno limpio.
 - [ ] **`docs/licenses.md` y `docs/db-schema.md`:** documentar atribución, licencias y el esquema de `foods.db`.
@@ -318,6 +334,7 @@ La versión sigue **MAYOR.MENOR.PARCHE**:
 | Versión | Commit | Qué incluye |
 |---|---|---|
 | `v0.1.0` | `56abae2` | Primera APK de prueba (build EAS `a8aa55e4`): buscar alimentos, diario por franjas, objetivos (Mifflin-St Jeor), historial, alimentos propios, editar registros, exportar/importar |
+| `v0.1.1` *(en `develop`, sin APK)* | — | Arreglo del teclado en la APK, APK más pequeña (solo arquitecturas de móvil), Expo SDK 58, recientes, favoritos, copiar de otro día, orden de resultados por supermercado y marca conocida |
 
 > Esa APK se generó con la versión interna `1.0.0` (versionCode 1), antes de adoptar este esquema. Es la misma app que `v0.1.0`. Desde el siguiente build la versión interna coincide con el tag.
 

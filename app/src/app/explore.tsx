@@ -1,4 +1,4 @@
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -50,6 +50,17 @@ export default function BuscarScreen() {
   const targetDate = dateParam && isValidISODate(dateParam) ? dateParam : undefined;
   const mealFromHome = MEALS.find((m) => m.key === meal)?.key;
   const theme = useTheme();
+  const navigation = useNavigation<{ setParams: (params: { meal?: string; date?: string }) => void }>();
+
+  // La franja y el día vienen como parámetros de la pantalla (desde el + de Hoy) y las pestañas los
+  // conservan. Al salir de Buscar se borran, para que abrirla después desde la barra de abajo no
+  // siga diciendo "Añadiendo a Desayuno". Usamos la navegación de esta pantalla (y no router.setParams)
+  // porque al salir, la pantalla activa ya es otra.
+  useFocusEffect(
+    useCallback(() => {
+      return () => navigation.setParams({ meal: undefined, date: undefined });
+    }, [navigation]),
+  );
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodResult[]>([]);

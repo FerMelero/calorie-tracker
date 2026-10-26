@@ -7,6 +7,7 @@
  * de seguridad antes de importarlas.
  */
 
+import { cleanBarcode } from '@/lib/barcode';
 import { isValidISODate } from '@/lib/dates';
 
 export const MEAL_KEYS = ['desayuno', 'comida', 'snacks', 'merienda', 'cena'] as const;
@@ -19,7 +20,8 @@ export const LIMITS = {
   KCAL_MAX: 900,
   NAME_MIN: 3,
   NAME_MAX: 100,
-  BRAND_MAX: 100,
+  // En foods.db hay marcas de hasta 134 caracteres (listas de empresas); con 200 caben todas
+  BRAND_MAX: 200,
   GRAMS_MAX: 10000,
   GOAL_KCAL_MAX: 10000,
   GOAL_MACRO_MAX: 2000,
@@ -29,6 +31,8 @@ export const LIMITS = {
 export type CustomFoodInput = {
   name: string;
   brand: string | null;
+  /** Código de barras (solo dígitos, 6 a 14). Opcional. */
+  barcode?: string | null;
   kcal: number;
   protein: number;
   carbs: number;
@@ -55,6 +59,9 @@ export type EntryInput = {
   salt: number | null;
 };
 
+/** Alimento favorito: copia de sus valores por 100 g y de dónde venía. */
+export type FavoriteInput = CustomFoodInput & { source: 'db' | 'custom' };
+
 export type GoalsInput = {
   mode: 'auto' | 'manual';
   sex: 'male' | 'female' | null;
@@ -77,6 +84,7 @@ export type Backup = {
   format_version: number;
   exported_at: string;
   custom_foods: CustomFoodInput[];
+  favorites: FavoriteInput[];
   entries: EntryInput[];
   goals: GoalsInput | null;
 };
@@ -139,12 +147,28 @@ function readOptionalEnum<T extends string>(v: unknown, path: string, allowed: r
 
 // ---------------------------------------------------------------- alimentos propios
 
-export function validateCustomFood(raw: unknown, path = 'alimento'): ValidationResult<CustomFoodInput> {
+/**
+ * `lenient` es para los favoritos: sus valores por 100 g se calculan a partir de registros ya
+ * redondeados, así que pueden desviarse unas décimas; se admite un margen en la suma de macros y
+ * no se comprueba azúcares frente a carbohidratos.
+ */
+export function validateCustomFood(
+  raw: unknown,
+  path = 'alimento',
+  lenient = false,
+): ValidationResult<CustomFoodInput> {
   const errors: string[] = [];
   if (!isObj(raw)) return { ok: false, errors: [`${path}: tiene que ser un objeto`] };
 
   const name = readText(raw.name, `${path}.name`, LIMITS.NAME_MIN, LIMITS.NAME_MAX, errors);
   const brand = readOptionalText(raw.brand, `${path}.brand`, LIMITS.BRAND_MAX, errors);
+  // Código de barras: opcional; si viene, solo dígitos y entre 6 y 14
+  let barcode: string | null = null;
+  if (raw.barcode !== undefined && raw.barcode !== null && !(typeof raw.barcode === 'string' && raw.barcode.trim() === '')) {
+    const text = typeof raw.barcode === 'string' ? raw.barcode.trim() : '';
+    if (/^\d{6,14}$/.test(text) && cleanBarcode(text) === text) barcode = text;
+    else errors.push(`${path}.barcode: tiene que tener solo dígitos, entre 6 y 14`);
+  }
   const kcal = readNumber(raw.kcal, `${path}.kcal`, 0, LIMITS.KCAL_MAX, errors);
   const protein = readNumber(raw.protein, `${path}.protein`, 0, 100, errors);
   const carbs = readNumber(raw.carbs, `${path}.carbs`, 0, 100, errors);
@@ -153,10 +177,10 @@ export function validateCustomFood(raw: unknown, path = 'alimento'): ValidationR
   const fiber = readOptionalNumber(raw.fiber, `${path}.fiber`, 0, 100, errors);
   const salt = readOptionalNumber(raw.salt, `${path}.salt`, 0, 100, errors);
 
-  if (protein !== null && carbs !== null && fat !== null && protein + carbs + fat > 100.05) {
+  if (protein !== null && carbs !== null && fat !== null && protein + carbs + fat > (lenient ? 105 : 100.05)) {
     errors.push(`${path}: proteínas + carbohidratos + grasas no pueden sumar más de 100 g por cada 100 g`);
   }
-  if (sugars !== null && carbs !== null && sugars > carbs) {
+  if (!lenient && sugars !== null && carbs !== null && sugars > carbs) {
     errors.push(`${path}.sugars: los azúcares no pueden superar a los carbohidratos`);
   }
 
@@ -166,12 +190,22 @@ export function validateCustomFood(raw: unknown, path = 'alimento'): ValidationR
   return {
     ok: true,
     data: {
-      name, brand, kcal: round1(kcal), protein: round1(protein), carbs: round1(carbs), fat: round1(fat),
+      name, brand, barcode, kcal: round1(kcal), protein: round1(protein), carbs: round1(carbs), fat: round1(fat),
       sugars: sugars === null ? null : round1(sugars),
       fiber: fiber === null ? null : round1(fiber),
       salt: salt === null ? null : round1(salt),
     },
   };
+}
+
+export function validateFavorite(raw: unknown, path = 'favorito'): ValidationResult<FavoriteInput> {
+  const errors: string[] = [];
+  if (!isObj(raw)) return { ok: false, errors: [`${path}: tiene que ser un objeto`] };
+  const source = readEnum(raw.source, `${path}.source`, ['db', 'custom'] as const, errors);
+  const food = validateCustomFood(raw, path, true);
+  if (!food.ok) errors.push(...food.errors);
+  if (errors.length > 0 || source === null || !food.ok) return { ok: false, errors };
+  return { ok: true, data: { ...food.data, source } };
 }
 
 // ---------------------------------------------------------------- registros del diario
@@ -273,6 +307,7 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
 
   const errors: string[] = [];
   const customFoods: CustomFoodInput[] = [];
+  const favorites: FavoriteInput[] = [];
   const entries: EntryInput[] = [];
   let goals: GoalsInput | null = null;
 
@@ -283,6 +318,18 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
       if (r.ok) customFoods.push(r.data);
       else errors.push(...r.errors);
     });
+  }
+
+  // favorites es opcional: las copias antiguas no lo traen
+  if (raw.favorites !== undefined && raw.favorites !== null) {
+    if (!Array.isArray(raw.favorites)) errors.push('favorites: tiene que ser una lista');
+    else {
+      raw.favorites.forEach((item, i) => {
+        const r = validateFavorite(item, `favorites[${i}]`);
+        if (r.ok) favorites.push(r.data);
+        else errors.push(...r.errors);
+      });
+    }
   }
 
   if (!Array.isArray(raw.entries)) errors.push('entries: tiene que ser una lista');
@@ -309,6 +356,7 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
       format_version: raw.format_version,
       exported_at: typeof raw.exported_at === 'string' ? raw.exported_at : '',
       custom_foods: customFoods,
+      favorites,
       entries,
       goals,
     },

@@ -9,10 +9,19 @@
       "android": {
         "buildType": "apk"
       },
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "BUILD_ARCHS": "arm64-v8a,armeabi-v7a"
+      }
     },
     "production": {
       "autoIncrement": true
+    },
+    "preview-emulator": {
+      "extends": "preview",
+      "env": {
+        "BUILD_ARCHS": "x86_64"
+      }
     }
   }
 }

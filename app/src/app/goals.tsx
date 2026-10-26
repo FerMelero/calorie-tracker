@@ -1,10 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
+import { KeyboardAwareScrollView } from '@/components/keyboard-aware-scroll-view';
 import { Chips, NumberField, Stepper } from '@/components/form-controls';
 import { MacroPills } from '@/components/macro-pills';
 import { ThemedText } from '@/components/themed-text';
@@ -143,7 +144,7 @@ export default function GoalsScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView
+        <KeyboardAwareScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets>
@@ -253,7 +254,7 @@ export default function GoalsScreen() {
               {message}
             </ThemedText>
           ) : null}
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </SafeAreaView>
     </ThemedView>
   );

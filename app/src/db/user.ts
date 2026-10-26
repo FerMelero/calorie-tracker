@@ -38,7 +38,7 @@ export type Entry = {
   salt: number | null;
 };
 
-const USER_DB_VERSION = 3;
+const USER_DB_VERSION = 5;
 
 let db: SQLiteDatabase | null = null;
 
@@ -116,6 +116,30 @@ function migrate(database: SQLiteDatabase) {
       );
       ALTER TABLE entries ADD COLUMN food_source TEXT NOT NULL DEFAULT 'db';
     `);
+  }
+  if (current < 4) {
+    database.execSync(`
+      -- Favoritos: copia de los valores por 100 g, así no dependen de que foods.db cambie
+      CREATE TABLE favorites (
+        id        INTEGER PRIMARY KEY,
+        key       TEXT NOT NULL UNIQUE,
+        source    TEXT NOT NULL,
+        source_id INTEGER NOT NULL,
+        name      TEXT NOT NULL,
+        brand     TEXT,
+        kcal      REAL NOT NULL,
+        protein   REAL NOT NULL,
+        carbs     REAL NOT NULL,
+        fat       REAL NOT NULL,
+        sugars    REAL,
+        fiber     REAL,
+        salt      REAL
+      );
+    `);
+  }
+  if (current < 5) {
+    // Código de barras de los alimentos propios (para encontrarlos al escanear)
+    database.execSync('ALTER TABLE custom_foods ADD COLUMN barcode TEXT;');
   }
   database.execSync(`PRAGMA user_version = ${USER_DB_VERSION}`);
 }
@@ -232,4 +256,58 @@ export async function getDaySummaries(): Promise<DaySummary[]> {
     carbs: Math.round(r.carbs * 10) / 10,
     fat: Math.round(r.fat * 10) / 10,
   }));
+}
+
+export type RecentFood = Food & { lastGrams: number };
+
+const per100 = (total: number | null, grams: number, max: number): number | null =>
+  total === null ? null : Math.min(max, Math.round(((total * 100) / grams) * 10) / 10);
+
+/**
+ * Los alimentos que añadiste más recientemente, sin repetir, con la última cantidad usada.
+ * Los valores por 100 g se deducen del registro (total ÷ gramos × 100) porque el diario guarda
+ * una copia y no depende de que el alimento siga existiendo.
+ */
+export async function getRecentFoods(limit = 20): Promise<RecentFood[]> {
+  const rows = await getUserDb().getAllAsync<Entry & { last_id: number }>(
+    `SELECT food_id, food_source, food_name, food_brand, grams, kcal, protein, carbs, fat,
+            sugars, fiber, salt, MAX(id) AS last_id
+     FROM entries
+     GROUP BY food_source, food_name, COALESCE(food_brand, '')
+     ORDER BY last_id DESC
+     LIMIT ?`,
+    [limit],
+  );
+  return rows.map((r) => ({
+    id: r.food_id,
+    source: r.food_source,
+    barcode: null,
+    name: r.food_name,
+    brand: r.food_brand,
+    kcal: per100(r.kcal, r.grams, 900) ?? 0,
+    protein: per100(r.protein, r.grams, 100) ?? 0,
+    carbs: per100(r.carbs, r.grams, 100) ?? 0,
+    fat: per100(r.fat, r.grams, 100) ?? 0,
+    sugars: per100(r.sugars, r.grams, 100),
+    fiber: per100(r.fiber, r.grams, 100),
+    salt: per100(r.salt, r.grams, 100),
+    lastGrams: r.grams,
+  }));
+}
+
+/**
+ * Copia los registros de un día a otro, conservando la franja. Devuelve cuántos se copiaron.
+ * Solo se copian las franjas indicadas.
+ */
+export async function copyEntries(fromDate: string, toDate: string, meals: MealKey[]): Promise<number> {
+  if (meals.length === 0) return 0;
+  const marks = meals.map(() => '?').join(', ');
+  const result = await getUserDb().runAsync(
+    `INSERT INTO entries
+       (date, meal, food_id, food_source, food_name, food_brand, grams, kcal, protein, carbs, fat, sugars, fiber, salt)
+     SELECT ?, meal, food_id, food_source, food_name, food_brand, grams, kcal, protein, carbs, fat, sugars, fiber, salt
+     FROM entries WHERE date = ? AND meal IN (${marks}) ORDER BY id`,
+    [toDate, fromDate, ...meals],
+  );
+  return result.changes;
 }

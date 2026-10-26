@@ -39,7 +39,7 @@ export default function HistoryScreen() {
             <ThemedText type="small" themeColor="textSecondary">
               {days.length} {days.length === 1 ? 'día registrado' : 'días registrados'}
             </ThemedText>
-          ) : null
+          ) : undefined
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -56,7 +56,7 @@ export default function HistoryScreen() {
               label={`Ver ${Math.min(PAGE_SIZE, days.length - visible)} más`}
               onPress={() => setVisible((v) => v + PAGE_SIZE)}
             />
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => {
           const over = goals !== null && item.kcal > goals.kcal;

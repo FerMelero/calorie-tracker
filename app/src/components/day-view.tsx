@@ -6,6 +6,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Card } from '@/components/card';
 import { MacroPills } from '@/components/macro-pills';
+import { CopyDayModal } from '@/components/copy-day-modal';
 import { EditEntryModal } from '@/components/edit-entry-modal';
 import { MacroProgress } from '@/components/macro-progress';
 import { ThemedText } from '@/components/themed-text';
@@ -35,6 +36,9 @@ export function DayView({ date, header }: Props) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [goals, setGoals] = useState<Goals | null>(null);
   const [editing, setEditing] = useState<Entry | null>(null);
+  const [copyOpen, setCopyOpen] = useState(false);
+  // Cambia cada vez que se abre la ventana de copiar, para que empiece limpia
+  const [copyRun, setCopyRun] = useState(0);
 
   const load = useCallback(async () => {
     setEntries(await getEntries(date));
@@ -108,6 +112,15 @@ export function DayView({ date, header }: Props) {
             )}
           </LinearGradient>
 
+          <Pressable
+            onPress={() => {
+              setCopyRun((n) => n + 1);
+              setCopyOpen(true);
+            }}
+            style={({ pressed }) => [styles.copyButton, { borderColor: theme.backgroundSelected, opacity: pressed ? 0.6 : 1 }]}>
+            <ThemedText type="smallBold">📋 Copiar de otro día</ThemedText>
+          </Pressable>
+
           {MEALS.map((meal, index) => {
             const mealEntries = entries.filter((e) => e.meal === meal.key);
             const mealTotal = sumTotals(mealEntries);
@@ -169,6 +182,13 @@ export function DayView({ date, header }: Props) {
             );
           })}
     </ScrollView>
+      <CopyDayModal
+        key={copyRun}
+        visible={copyOpen}
+        targetDate={date}
+        onClose={() => setCopyOpen(false)}
+        onCopied={load}
+      />
       <EditEntryModal
         key={editing?.id ?? 'none'}
         entry={editing}
@@ -182,6 +202,7 @@ export function DayView({ date, header }: Props) {
 const styles = StyleSheet.create({
   content: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },
   totalCard: { borderRadius: 28, padding: Spacing.four, gap: Spacing.three },
+  copyButton: { alignItems: 'center', borderWidth: 1.5, borderRadius: 16, paddingVertical: 12 },
   onAccentMuted: { color: 'rgba(255,255,255,0.82)' },
   link: { color: '#ffffff' },
   kcalRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two },

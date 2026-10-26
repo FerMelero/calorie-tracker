@@ -24,6 +24,7 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 - ✅ Los gramos se eligen al añadir un alimento (con vista previa de kcal y macros) y se pueden editar después, junto con la franja (botón "Editar" en cada registro).
 - ✅ Nombre ("Contador de Calorías") y paquete (`com.fernando.contadorcalorias`) definidos; `eas.json` y `.easignore` listos.
 - ✅ Icono, icono adaptativo de Android y pantalla de carga propios.
+- ✅ Orden de los resultados: primero supermercados (Mercadona/Hacendado, Carrefour, Lidl, Dia, Aldi…), luego marcas conocidas y los productos más escaneados en Open Food Facts; los alimentos propios tienen ventaja.
 - ✅ Registro rápido: pestañas **Recientes** y **Favoritos (★)** en Buscar (los recientes abren con la última cantidad usada) y **Copiar de otro día** (elige uno de los últimos 14 días y las franjas a copiar).
 - ⏳ Pendiente: ver la sección "Pendiente y mejoras".
 
@@ -70,6 +71,7 @@ calorie-tracker/
 │   └── assets/db/foods.db      #   Base de alimentos (NO se sube a git; copiar desde pipeline)
 ├── pipeline/                   # Fábrica de datos: solo se ejecuta en el PC
 │   ├── 01_filter_off.py        #   Volcado de OFF -> data/productos_es.csv (solo España)
+│   ├── brands.py               #   Lista editable de supermercados y marcas conocidas (orden de prioridad)
 │   ├── 02_build_db.py          #   Limpia, deduplica y genera data/foods.db
 │   ├── data-to-sqlite.py       #   Análisis exploratorio del CSV y esquema de la BD
 │   └── data/                   #   Volcados, CSV y .db generados (ignorado por git)
@@ -83,7 +85,8 @@ calorie-tracker/
 |---|---|
 | Cambiar qué alimentos entran en la base | `pipeline/02_build_db.py` (reglas de limpieza al principio del archivo) |
 | Cambiar las columnas de la base de alimentos | `pipeline/02_build_db.py` (`SCHEMA`) y `app/src/db/search.ts` (tipo `Food` y consulta) |
-| Cambiar cómo se busca o se ordena | `app/src/db/search.ts` |
+| Cambiar cómo se busca o se ordena | `app/src/db/search.ts` (pesos `BONUS_*` arriba del todo) |
+| Cambiar qué supermercados o marcas salen primero, o su orden | `pipeline/brands.py`, luego regenerar `foods.db` |
 | Cambiar la pantalla de búsqueda | `app/src/app/explore.tsx` |
 | Cambiar la pantalla del día | `app/src/app/index.tsx` |
 | Guardar algo nuevo en el diario (campos, tablas) | `app/src/db/user.ts` (nueva migración subiendo `USER_DB_VERSION`) |
@@ -141,6 +144,7 @@ Ejecuta lint y typecheck antes de dar una tarea por terminada. (`expo lint` da h
 - **Favoritos y recientes:** los favoritos se guardan en `user.db` (tabla `favorites`) con una copia de sus valores por 100 g, igual que los registros. Los recientes no tienen tabla: se calculan a partir del diario (último registro de cada alimento) y sus valores por 100 g se deducen de ese registro.
 - **Copia de seguridad:** JSON con `app`, `format_version`, `custom_foods`, `favorites` (opcional, las copias antiguas no lo traen), `entries` y `goals`. Al importar se valida todo (mismas reglas que el pipeline: por 100 g, kcal 0–900, macros ≤ 100 g, nombres de 3 a 100 letras, fechas reales, franjas válidas); si algo falla no se importa nada. Los duplicados se saltan.
 - **Objetivos:** una sola fila en `user.db` (tabla `goals`). No hay cuentas: los objetivos pertenecen a quien usa ese móvil. Guarda tanto el resultado (kcal y macros) como los datos del cálculo, para poder editarlos después.
+- **Orden de los resultados:** cada alimento de `foods.db` tiene `brand_rank` (1–49 marca de supermercado, 50–99 sin marca conocida pero se vende en uno, 100 marca conocida, vacío el resto) y `scans` (veces escaneado en OFF). La app ordena por `parecido + bonus`: 40 puntos a un supermercado (algo menos cuanto más abajo esté en la lista), 20 a una marca conocida, hasta 10 por popularidad y 50 a los alimentos propios. El parecido que se muestra no incluye los bonus. Los pesos están en `app/src/db/search.ts`. Como en búsquedas amplias ("pollo") los 100 más parecidos pueden no incluir ninguno de supermercado, se piden tres listas de candidatos (por parecido, por marca y por popularidad) y se ordenan juntas.
 - **Búsqueda:** el texto se pasa a minúsculas y sin tildes. Primero busca palabras que empiezan por lo escrito (FTS5, muy rápido) y luego lo escrito dentro de cualquier palabra (LIKE). Cada resultado recibe un porcentaje de parecido y se ordenan de mayor a menor. Solo funciona en español y no corrige erratas.
 
 ## Plan de trabajo y ramas

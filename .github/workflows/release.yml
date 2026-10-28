@@ -1,0 +1,153 @@
+# CD: compila la APK y la deja en una Release de GitHub (en borrador, para que la pruebes antes).
+#
+#  - Al subir un tag vX.Y.Z  -> comprueba todo, compila y crea la release en borrador con la APK.
+#  - A mano (Actions -> Release -> Run workflow) -> con "dry_run" activado solo comprueba (no gasta build).
+#
+# Necesita el secreto EXPO_TOKEN y que exista la release con foods.db (ver README, "CI/CD").
+name: Release (APK)
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Perfil de eas.json
+        type: choice
+        options: [preview, preview-emulator, production]
+        default: preview
+      dry_run:
+        description: Solo comprobar (no compila ni gasta ninguna build de EAS)
+        type: boolean
+        default: true
+
+permissions:
+  contents: write # para crear la release y subirle la APK
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  build:
+    name: Compilar y publicar
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 120 # la cola gratuita de EAS puede tardar más de una hora
+    env:
+      PROFILE: ${{ inputs.profile || 'preview' }}
+      DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+      GH_TOKEN: ${{ github.token }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Versión (el tag tiene que coincidir con la de la app)
+        id: version
+        run: |
+          APP=$(jq -r .expo.version app/app.json)
+          PKG=$(jq -r .version app/package.json)
+          if [ "$APP" != "$PKG" ]; then
+            echo "::error::app.json ($APP) y package.json ($PKG) tienen versiones distintas"
+            exit 1
+          fi
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "v$APP" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::El tag $GITHUB_REF_NAME no coincide con la versión de la app (v$APP). Sube la versión y vuelve a crear el tag."
+            exit 1
+          fi
+          echo "version=$APP" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Instalar dependencias (EAS las necesita para leer la configuración)
+        working-directory: app
+        run: npm ci
+
+      - name: Descargar foods.db de la release
+        run: |
+          TAG=$(tr -d '[:space:]' < pipeline/FOODS_DB_RELEASE)
+          echo "Descargando foods.db de la release $TAG"
+          if ! gh release download "$TAG" --pattern foods.db --dir app/assets/db --clobber; then
+            echo "::error::No encuentro foods.db en la release '$TAG'. Créala con ese tag y súbele foods.db (README, 'Publicar foods.db'), o corrige pipeline/FOODS_DB_RELEASE."
+            exit 1
+          fi
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Comprobar que foods.db sirve para la app
+        run: python3 pipeline/check_foods_db.py app/assets/db/foods.db
+
+      - name: Preparar EAS CLI
+        if: env.DRY_RUN != 'true'
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Compilar con EAS Build
+        id: eas
+        if: env.DRY_RUN != 'true'
+        working-directory: app
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Falta el secreto EXPO_TOKEN (README, 'CI/CD')."
+            exit 1
+          fi
+          eas build --platform android --profile "$PROFILE" --non-interactive --wait --json \
+            --message "${GITHUB_REF_NAME}" > "$RUNNER_TEMP/build.json"
+          cat "$RUNNER_TEMP/build.json"
+          # La estructura exacta de la respuesta no está documentada: se busca el enlace .apk/.aab
+          URL=$(jq -r '[.. | strings | select(test("^https://.+\\.(apk|aab)(\\?.*)?$"))] | first // empty' "$RUNNER_TEMP/build.json")
+          if [ -z "$URL" ]; then
+            echo "::error::No encuentro el enlace de descarga en la respuesta de EAS (mira el JSON de arriba)"
+            exit 1
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Descargar el archivo compilado
+        if: env.DRY_RUN != 'true'
+        run: |
+          EXT=apk; [ "$PROFILE" = production ] && EXT=aab
+          SUFFIX=""; [ "$PROFILE" = preview-emulator ] && SUFFIX="-emulador"
+          FILE="contador-calorias-v${{ steps.version.outputs.version }}${SUFFIX}.${EXT}"
+          curl -fL "${{ steps.eas.outputs.url }}" -o "$FILE"
+          echo "FILE=$FILE" >> "$GITHUB_ENV"
+          echo "### $FILE — $(du -h "$FILE" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar como artefacto (14 días)
+        if: env.DRY_RUN != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.FILE }}
+          path: ${{ env.FILE }}
+          retention-days: 14
+
+      - name: Crear la release en borrador con la APK
+        if: env.DRY_RUN != 'true' && github.ref_type == 'tag' && env.PROFILE == 'preview'
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$FILE" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$FILE" --draft --prerelease \
+              --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
+          fi
+          echo "Release en borrador: $GITHUB_REF_NAME. Pruébala y publícala desde GitHub." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Resumen de la comprobación (modo dry run)
+        if: env.DRY_RUN == 'true'
+        run: |
+          {
+            echo "### Comprobación correcta ✓ (no se ha compilado nada)"
+            echo "- Versión de la app: ${{ steps.version.outputs.version }}"
+            echo "- foods.db descargada y validada"
+            echo "- Perfil que se usaría: $PROFILE"
+          } >> "$GITHUB_STEP_SUMMARY"

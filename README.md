@@ -49,6 +49,10 @@ Ver **"Pendiente y mejoras"**. Lo más inmediato: **poner el correo de sugerenci
 
 ```
 calorie-tracker/
+├── .github/
+│   ├── workflows/ci.yml        # Comprobaciones en cada PR y subida a develop/main
+│   ├── workflows/release.yml   # Al subir un tag vX.Y.Z: compila la APK y crea la release en borrador
+│   └── pull_request_template.md
 ├── app/                        # La app del móvil (Expo)
 │   ├── src/app/                #   Pantallas (cada archivo es una pantalla/ruta)
 │   │   ├── _layout.tsx         #     Abre foods.db y monta las pestañas
@@ -84,7 +88,8 @@ calorie-tracker/
 │   │   ├── favorites.ts        #     Favoritos (tabla favorites de user.db)
 │   │   └── backup.ts           #     Construir la copia de seguridad e importarla
 │   ├── src/constants/contact.ts #  Correo de sugerencias (SUGGESTIONS_EMAIL) y apertura del correo
-│   ├── src/lib/                #   Funciones puras (sin Expo)
+│   ├── src/lib/                #   Funciones puras (sin Expo); tests en src/lib/__tests__/
+│   │   ├── ranking.ts          #     Parecido y bonus por marca/popularidad de los resultados
 │   │   ├── nutrition.ts        #     Fórmula de Mifflin-St Jeor y reparto de macros
 │   │   ├── validation.ts       #     Reglas del formato de datos (alimentos, diario, objetivos, copia)
 │   │   ├── barcode.ts          #     Limpiar y comparar códigos de barras (EAN-13 / UPC)
@@ -94,6 +99,9 @@ calorie-tracker/
 │   └── assets/db/foods.db      #   Base de alimentos (NO se sube a git; copiar desde pipeline)
 ├── pipeline/                   # Fábrica de datos: solo se ejecuta en el PC
 │   ├── 01_filter_off.py        #   Volcado de OFF -> data/productos_es.csv (solo España)
+│   ├── FOODS_DB_RELEASE        #   Nombre de la release de GitHub de la que el CI descarga foods.db
+│   ├── check_foods_db.py       #   Comprueba que un foods.db sirve para la app (local y CI)
+│   ├── test_brands.py, test_build_db.py  # Tests del pipeline (python -m unittest)
 │   ├── brands.py               #   Lista editable de supermercados y marcas conocidas (orden de prioridad)
 │   ├── 02_build_db.py          #   Limpia, deduplica y genera data/foods.db
 │   ├── data-to-sqlite.py       #   Análisis exploratorio del CSV y esquema de la BD
@@ -109,6 +117,8 @@ calorie-tracker/
 | Cambiar qué alimentos entran en la base | `pipeline/02_build_db.py` (reglas de limpieza al principio del archivo) |
 | Cambiar las columnas de la base de alimentos | `pipeline/02_build_db.py` (`SCHEMA`) y `app/src/db/search.ts` (tipo `Food` y consulta) |
 | Cambiar cómo se busca o se ordena | `app/src/db/search.ts` (pesos `BONUS_*` arriba del todo) |
+| Ver o cambiar las comprobaciones automáticas | `.github/workflows/ci.yml` |
+| Cambiar cómo se compila y publica una versión | `.github/workflows/release.yml` |
 | Cambiar qué supermercados o marcas salen primero, o su orden | `pipeline/brands.py`, luego regenerar `foods.db` |
 | Cambiar la pantalla de búsqueda | `app/src/app/explore.tsx` |
 | Cambiar la pantalla del día | `app/src/app/index.tsx` |
@@ -198,9 +208,16 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
 - [ ] **Licencia del código:** `app/LICENSE` es la MIT de la plantilla de Expo (con el copyright de Expo). Sustituirla por una propia y añadir un `LICENSE` en la raíz.
 - [ ] **Licencia de los datos (ODbL):** publicar `foods.db` (o el modo de generarlo) en abierto y enlazarlo desde "Más → Acerca de". Hay que hacerlo si se distribuye la app.
 - [ ] **Ampliar `pipeline/brands.py`**: la lista de marcas conocidas es corta (~100) y hecha a mano; revisar qué marcas faltan o están mal asignadas.
+- [ ] **Activar el CI/CD** (una sola vez): crear el secreto `EXPO_TOKEN`, publicar la release de `foods.db` y probar el workflow con `dry_run`. Pasos en "CI/CD (GitHub Actions)".
 - [ ] **Poner el correo de sugerencias** en `app/src/constants/contact.ts` (`SUGGESTIONS_EMAIL`, hoy vacío). Mientras esté vacío, ni la tarjeta de Más ni el botón del escáner se muestran.
 - [ ] **Datos incompletos:** en el total del día, avisar cuando algún alimento tenga fibra, azúcares o sal en `NULL` (hoy se suman como 0 sin decir nada).
 - [ ] **Probar en más dispositivos** (otras versiones de Android, pantallas pequeñas, modo oscuro, texto grande).
+
+### 🐞 Fallos pequeños por corregir
+
+- [ ] **La ventana de añadir un alimento enseña una barrita arriba** (el "tirador") que parece indicar que se puede arrastrar hacia abajo para cerrarla, pero **no se puede**. Hay dos soluciones: que se pueda (cerrar al deslizar hacia abajo) o quitar la barrita. Afecta a todas las ventanas inferiores, que comparten `components/bottom-sheet-modal.tsx`: añadir alimento, editar registro, copiar de otro día, "No lo encontramos" del escáner. Hoy solo se cierran tocando fuera o con el botón atrás.
+- [ ] **Los gramos al añadir no tienen límite, pero la copia de seguridad sí** (0,1 a 10 000 g). `components/add-food-modal.tsx` acepta cualquier número mayor que 0, así que alguien puede registrar 50 000 g o 0,05 g y luego **exportar una copia que él mismo no podría importar**. Hay que usar el mismo rango (`LIMITS.GRAMS_MAX` de `lib/validation.ts`) que ya usa la ventana de editar.
+- [ ] **Hoy puede quedarse en el día anterior** si la app se deja abierta en segundo plano toda la noche: la fecha no se recalcula hasta que algo vuelve a dibujar la pantalla. Es probable y fácil de ver (abrir la app por la mañana y mirar la fecha); no se ha comprobado.
 
 ### 🟡 Funcionalidad
 
@@ -227,10 +244,9 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
 - [ ] **Calidad de `foods.db`:** unir duplicados casi iguales ("Jamon serrano" y "jamón serrano", "Milbona,Lidl" y "Lidl, Milbona"), y decidir qué hacer con unos 12 000 productos cuyas kcal no cuadran con sus macros.
 - [ ] **Versión de `foods.db` automática:** hoy hay que cambiar `FOODS_DB_NAME` en `_layout.tsx` (ahora `foods-2.db`) a mano al regenerar la base.
 - [ ] **Fecha del volcado de Open Food Facts** usado: dejarla anotada para que el resultado sea reproducible.
-- [ ] **Tests** de `lib/validation.ts`, `lib/nutrition.ts` y de los cálculos de `db/user.ts` (hoy se comprobaron a mano).
+- [ ] **Más tests:** ya hay tests de `lib/` (validación, objetivos, fechas, ranking, códigos de barras) y del pipeline; faltan los cálculos de `db/user.ts` (editar registros, recientes, copiar día), que dependen de SQLite y hoy solo se han comprobado a mano.
 - [ ] **Manejo de errores** en consultas y estados de carga (hoy un fallo de SQLite podría dejar la pantalla en blanco).
 - [ ] **Accesibilidad:** etiquetas para lectores de pantalla, contraste y tamaños de fuente.
-- [ ] **Integración continua:** GitHub Actions que ejecute `npx tsc --noEmit` y `npx expo lint` en cada Pull Request.
 - [ ] **Limpiar la plantilla de Expo:** borrar los archivos que ya no se usan (`animated-icon.*`, `external-link.tsx`, `hint-row.tsx`, `web-badge.tsx`, `ui/collapsible.tsx`, `expo-logo.png`, `react-logo*.png`, `expo-badge*.png`, `logo-glow.png`, `tutorial-web.png`, `assets/expo.icon/`, `tabIcons/` y `scripts/reset-project.js`) y el error de lint de `use-color-scheme.web.ts`.
 - [ ] **Alinear colores:** el verde del icono (lima `#70E83D`) y el de la app (`#2E9E6B`) no coinciden. Unificarlos en `constants/theme.ts` o regenerar el icono.
 - [ ] **`pipeline/requirements.txt`** no coincide con lo que realmente usa el pipeline (`duckdb`, `pandas`); regenerarlo desde un entorno limpio.
@@ -313,6 +329,45 @@ La primera vez pregunta si crear el proyecto en tu cuenta de Expo y si generar l
 - Que anoten qué hacían cuando algo falla (y si es posible, una captura).
 - Los objetivos son estimaciones, no consejo médico.
 
+## CI/CD (GitHub Actions)
+
+Dos workflows en `.github/workflows/`. Están pensados para este proyecto: un solo desarrollador, builds de EAS limitadas, y una base de alimentos que **no está en git**.
+
+### CI — `ci.yml` (automático)
+Se ejecuta en cada Pull Request a `develop` o `main` y en cada subida a esas ramas. Tres trabajos:
+
+| Trabajo | Qué comprueba |
+|---|---|
+| **App** | `tsc` (tipos), `expo lint`, **41 tests** de validación, objetivos, fechas, códigos de barras y orden de resultados, y `expo-doctor` (solo avisa, no bloquea) |
+| **Pipeline** | **18 tests** de Python: lista de supermercados, limpieza y deduplicado, y que el esquema de `foods.db` tiene las columnas que lee la app |
+| **Repositorio** | Las dos copias de `.easignore` son idénticas; `app.json` y `package.json` tienen la misma versión; no se ha colado en git ninguna base de datos, CSV, APK o clave |
+
+En la PR ves una marca verde ✓ o roja ✗. Si algo falla, el detalle está en la pestaña **Actions**.
+
+### CD — `release.yml` (al poner un tag)
+Al subir un tag `vX.Y.Z`:
+1. Ejecuta el CI entero. Si falla, **no compila nada** (y no gasta una build).
+2. Comprueba que el tag coincide con la versión de `app.json` (el tag `v0.1.2` exige `version: 0.1.2`).
+3. Descarga `foods.db` de la release indicada en `pipeline/FOODS_DB_RELEASE` y la valida con `pipeline/check_foods_db.py`.
+4. Compila la APK con EAS Build (perfil `preview`).
+5. Crea una **release en borrador y pre-release** con la APK ya renombrada (`contador-calorias-vX.Y.Z.apk`) y las notas generadas. La pruebas y, si va bien, pulsas **Publish**.
+
+También se puede lanzar a mano (**Actions → Release (APK) → Run workflow**), eligiendo perfil. Con **`dry_run` activado** solo hace las comprobaciones y **no gasta ninguna build**: es la forma de probar que todo está bien configurado.
+
+### Por qué `foods.db` va como release
+`foods.db` pesa 28 MB, cambia con cada regeneración y está en `.gitignore`, así que el CI no la tendría. La solución es subirla como archivo de una **release de GitHub** y que el CI la descargue. Así además: cada build usa exactamente la base publicada (reproducible), y se cumple la obligación de la licencia ODbL de ofrecer abiertamente la base derivada de Open Food Facts.
+
+### Configuración (una sola vez)
+1. **Secreto `EXPO_TOKEN`.** En <https://expo.dev> → tu cuenta → **Access tokens** → crear uno. En GitHub → **Settings → Secrets and variables → Actions → New repository secret** → nombre `EXPO_TOKEN`, valor el token.
+2. **Publicar `foods.db`.** En GitHub → **Releases → Draft a new release**: tag nuevo `foods-db-2026-10` (el mismo nombre que `pipeline/FOODS_DB_RELEASE`), título "foods.db (volcado de Open Food Facts, octubre 2026)", adjunta `app/assets/db/foods.db` y marca **pre-release** (así no le quita el "Latest" a las versiones de la app). Pon en las notas la fecha del volcado y la licencia: *"Base de datos derivada de Open Food Facts, licencia ODbL"*.
+3. **Probar sin gastar build:** **Actions → Release (APK) → Run workflow** con `dry_run` activado. Debe terminar en verde y el resumen dirá "Comprobación correcta ✓".
+
+### Cuando cambies la base de alimentos
+Regenerar con el pipeline → `python3 pipeline/check_foods_db.py pipeline/data/foods.db` → crear una release nueva (`foods-db-AAAA-MM`) con el archivo → cambiar `pipeline/FOODS_DB_RELEASE` → cambiar `FOODS_DB_NAME` en `app/src/app/_layout.tsx` (para que los móviles copien la nueva).
+
+### Lo que NO se ha podido probar
+Los tests, el lint y los tipos se ejecutaron en local con las mismas órdenes que usa el CI, y los dos archivos pasan `actionlint`. Pero **el paso de EAS Build no se ha ejecutado nunca desde GitHub**: la salida `--json` de `eas build` no está documentada y el workflow busca el enlace de la APK de forma tolerante, pero si algo no cuadra, el fallo saldrá la primera vez que se use y el log mostrará la respuesta de EAS. Si pasa, se corrige ese paso; el resto no se ve afectado. Hasta que lo veas funcionar una vez, la forma manual de la receta de abajo sigue siendo válida.
+
 ## Versiones, ramas y releases
 
 ### Ramas
@@ -352,6 +407,8 @@ La versión sigue **MAYOR.MENOR.PARCHE**:
 > Esa APK se generó con la versión interna `1.0.0` (versionCode 1), antes de adoptar este esquema. Es la misma app que `v0.1.0`. Desde el siguiente build la versión interna coincide con el tag.
 
 ### Cómo sacar una versión (receta)
+
+**Con CI/CD configurado** (lo más corto): subir `version` (paso 2), fusionar `develop` en `main` (paso 3) y **poner el tag**; el workflow compila y deja la release en borrador con la APK. Los pasos 4 y 5 de abajo son la forma manual.
 
 1. Asegúrate de que todo está fusionado en `develop` y probado.
 2. En `develop`: sube `version` en `app/app.json` y `app/package.json` (por ejemplo `0.1.1`) y añade una fila al historial de arriba. Commit: `chore: version 0.1.1`.

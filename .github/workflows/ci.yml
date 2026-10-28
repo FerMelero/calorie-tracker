@@ -1,0 +1,91 @@
+# CI: se ejecuta en cada Pull Request y en cada subida a develop o main.
+# También lo reutiliza release.yml, para no compilar nunca una APK con tests rotos.
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+  workflow_call:
+
+# Si subes otro commit a la misma PR, se cancela la comprobación anterior
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    name: App (tipos, lint y tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22 # Expo SDK 58 pide Node 22.13 o superior
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Instalar dependencias
+        run: npm ci
+      # Expo genera este archivo al ejecutar `expo start` y git lo ignora, así que en una copia limpia
+      # (como la del CI) no existe. Sin él, TypeScript no reconoce los imports de .css.
+      - name: Preparar los tipos de Expo (expo-env.d.ts)
+        run: echo '/// <reference types="expo/types" />' > expo-env.d.ts
+      - name: Tipos (TypeScript)
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npx expo lint
+      - name: Tests (validación, objetivos, fechas, ranking)
+        run: npm test
+      # Aviso, no bloquea: depende de servicios externos y de versiones de paquetes
+      - name: Expo Doctor
+        run: npx expo-doctor
+        continue-on-error: true
+
+  pipeline:
+    name: Pipeline de datos (Python)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install pandas
+      - name: Tests (lista de marcas, limpieza y esquema de foods.db)
+        run: python -m unittest -v
+
+  repo:
+    name: Repositorio (archivos que no deben subirse)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Las dos copias de .easignore deben ser idénticas
+        run: diff -u .easignore app/.easignore
+      - name: Versión igual en app.json y package.json
+        run: |
+          APP=$(jq -r .expo.version app/app.json)
+          PKG=$(jq -r .version app/package.json)
+          echo "app.json: $APP · package.json: $PKG"
+          [ "$APP" = "$PKG" ]
+      - name: Nada pesado ni secreto en git (bases de datos, volcados, APK, claves, .env)
+        run: |
+          bad=$(git ls-files | grep -E '\.(db|sqlite|sqlite3|csv|gz|apk|aab|keystore|jks|p12|pem)$|(^|/)\.env$' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Estos archivos no deben estar en git (foods.db va como release, ver README):"
+            echo "$bad"
+            exit 1
+          fi
+      - name: Debe existir pipeline/FOODS_DB_RELEASE
+        run: test -n "$(tr -d '[:space:]' < pipeline/FOODS_DB_RELEASE)"

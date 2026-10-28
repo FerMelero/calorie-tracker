@@ -34,6 +34,10 @@ jobs:
           cache-dependency-path: app/package-lock.json
       - name: Instalar dependencias
         run: npm ci
+      # Expo genera este archivo al ejecutar `expo start` y git lo ignora, así que en una copia limpia
+      # (como la del CI) no existe. Sin él, TypeScript no reconoce los imports de .css.
+      - name: Preparar los tipos de Expo (expo-env.d.ts)
+        run: echo '/// <reference types="expo/types" />' > expo-env.d.ts
       - name: Tipos (TypeScript)
         run: npx tsc --noEmit
       - name: Lint

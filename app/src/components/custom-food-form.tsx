@@ -12,7 +12,7 @@ import { validateCustomFood } from '@/lib/validation';
 
 const FIELD_NAMES: Record<string, string> = {
   name: 'Nombre', brand: 'Marca', barcode: 'Código de barras', kcal: 'Calorías', protein: 'Proteínas',
-  carbs: 'Carbohidratos', fat: 'Grasas', sugars: 'Azúcares', fiber: 'Fibra', salt: 'Sal',
+  serving_g: 'Ración', carbs: 'Carbohidratos', fat: 'Grasas', sugars: 'Azúcares', fiber: 'Fibra', salt: 'Sal',
 };
 
 /** "alimento.kcal: tiene que..." -> "Calorías: tiene que..." */
@@ -40,6 +40,7 @@ export function CustomFoodForm({ editingId, initialBarcode, onSaved }: Props) {
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
   const [barcode, setBarcode] = useState(initialBarcode ?? '');
+  const [serving, setServing] = useState('');
   const [kcal, setKcal] = useState('');
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
@@ -56,6 +57,7 @@ export function CustomFoodForm({ editingId, initialBarcode, onSaved }: Props) {
       setName(f.name);
       setBrand(f.brand ?? '');
       setBarcode(f.barcode ?? '');
+      setServing(f.serving_g === null || f.serving_g === undefined ? '' : String(f.serving_g));
       setKcal(String(f.kcal));
       setProtein(String(f.protein));
       setCarbs(String(f.carbs));
@@ -71,6 +73,7 @@ export function CustomFoodForm({ editingId, initialBarcode, onSaved }: Props) {
       name,
       brand,
       barcode,
+      serving_g: optionalNumber(serving),
       kcal: parseNumber(kcal) ?? NaN,
       protein: parseNumber(protein) ?? NaN,
       carbs: parseNumber(carbs) ?? NaN,
@@ -113,6 +116,17 @@ export function CustomFoodForm({ editingId, initialBarcode, onSaved }: Props) {
         <View style={styles.fields}>
           <NumberField label="Carbohidratos" value={carbs} onChangeText={setCarbs} unit="g" />
           <NumberField label="Grasas" value={fat} onChangeText={setFat} unit="g" />
+        </View>
+      </View>
+
+      <View style={styles.group}>
+        <ThemedText style={styles.title}>Ración (opcional)</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          Cuánto pesa una ración, por ejemplo 40 si una ración son 40 g. Al añadir el alimento aparecerá un
+          botón &ldquo;1 ración&rdquo; para poner esa cantidad de un toque.
+        </ThemedText>
+        <View style={styles.fields}>
+          <NumberField label="Una ración" value={serving} onChangeText={setServing} unit="g" />
         </View>
       </View>
 

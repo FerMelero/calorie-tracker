@@ -7,7 +7,7 @@ import type { CustomFoodInput } from '@/lib/validation';
 /** Alimento propio guardado en user.db (valores por 100 g). */
 export type CustomFood = CustomFoodInput & { id: number };
 
-const COLUMNS = 'id, name, brand, barcode, kcal, protein, carbs, fat, sugars, fiber, salt';
+const COLUMNS = 'id, name, brand, barcode, serving_g, kcal, protein, carbs, fat, sugars, fiber, salt';
 
 function searchText(food: Pick<CustomFoodInput, 'name' | 'brand'>): string {
   return normalize(`${food.name} ${food.brand ?? ''}`.trim());
@@ -19,6 +19,7 @@ export function customToFood(food: CustomFood): Food {
     id: food.id,
     source: 'custom',
     barcode: food.barcode ?? null,
+    serving_g: food.serving_g ?? null,
     name: food.name,
     brand: food.brand,
     kcal: food.kcal,
@@ -50,19 +51,19 @@ export function findCustomByBarcode(code: string): Promise<CustomFood | null> {
 /** Crea o actualiza un alimento propio. Devuelve su id. */
 export async function saveCustomFood(food: CustomFoodInput, id?: number): Promise<number> {
   const values = [
-    food.name, food.brand, food.barcode ?? null, food.kcal, food.protein, food.carbs, food.fat,
+    food.name, food.brand, food.barcode ?? null, food.serving_g ?? null, food.kcal, food.protein, food.carbs, food.fat,
     food.sugars, food.fiber, food.salt, searchText(food),
   ];
   if (id === undefined) {
     const result = await getUserDb().runAsync(
-      `INSERT INTO custom_foods (name, brand, barcode, kcal, protein, carbs, fat, sugars, fiber, salt, search_text)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO custom_foods (name, brand, barcode, serving_g, kcal, protein, carbs, fat, sugars, fiber, salt, search_text)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       values,
     );
     return result.lastInsertRowId;
   }
   await getUserDb().runAsync(
-    `UPDATE custom_foods SET name = ?, brand = ?, barcode = ?, kcal = ?, protein = ?, carbs = ?, fat = ?,
+    `UPDATE custom_foods SET name = ?, brand = ?, barcode = ?, serving_g = ?, kcal = ?, protein = ?, carbs = ?, fat = ?,
        sugars = ?, fiber = ?, salt = ?, search_text = ? WHERE id = ?`,
     [...values, id],
   );
@@ -82,4 +83,18 @@ export async function searchCustomFoods(tokens: string[], limit: number): Promis
     [...tokens.map((t) => `%${t}%`), limit],
   );
   return rows.map((r) => ({ ...r, source: 'custom' as const }));
+}
+
+/**
+ * La ración actual de un alimento propio, buscándolo por nombre y marca. Sirve para los alimentos
+ * que llegan desde Recientes o Favoritos, que guardan una copia sin ración. Los alimentos de
+ * foods.db no tienen ración por ahora, así que devuelven null.
+ */
+export async function getCustomServing(food: Pick<Food, 'source' | 'name' | 'brand'>): Promise<number | null> {
+  if (food.source !== 'custom') return null;
+  const row = await getUserDb().getFirstAsync<{ serving_g: number | null }>(
+    'SELECT serving_g FROM custom_foods WHERE name = ? AND brand IS ? LIMIT 1',
+    [food.name, food.brand],
+  );
+  return row?.serving_g ?? null;
 }

@@ -69,6 +69,11 @@ export default function MyFoodsScreen() {
               <ThemedText type="smallBold">{item.kcal} kcal</ThemedText>
             </View>
             <MacroPills protein={item.protein} carbs={item.carbs} fat={item.fat} />
+            {item.serving_g ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                Ración: {item.serving_g} g
+              </ThemedText>
+            ) : null}
             <View style={styles.actions}>
               <Pressable
                 onPress={() => router.push({ pathname: '/more/food-form', params: { id: String(item.id) } })}>

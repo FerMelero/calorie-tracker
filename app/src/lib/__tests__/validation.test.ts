@@ -60,6 +60,40 @@ describe('validateCustomFood (valores por 100 g)', () => {
   });
 });
 
+describe('ración de los alimentos propios (opcional)', () => {
+  it('sin ración es válido y queda a null', () => {
+    for (const v of [undefined, null]) {
+      const r = validateCustomFood(food({ serving_g: v }));
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.data.serving_g).toBeNull();
+    }
+  });
+
+  it('acepta una ración de 0,1 a 10 000 g y la redondea a un decimal', () => {
+    const r = validateCustomFood(food({ serving_g: 12.74 }));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.data.serving_g).toBe(12.7);
+    expect(validateCustomFood(food({ serving_g: 0.1 })).ok).toBe(true);
+    expect(validateCustomFood(food({ serving_g: LIMITS.GRAMS_MAX })).ok).toBe(true);
+  });
+
+  it('rechaza raciones de 0, negativas, enormes o que no son un número', () => {
+    for (const bad of [0, -5, LIMITS.GRAMS_MAX + 1, 'cuarenta', Number.NaN]) {
+      expect(validateCustomFood(food({ serving_g: bad })).ok).toBe(false);
+    }
+  });
+
+  it('viaja en la copia de seguridad', () => {
+    const r = validateBackup(backup({ custom_foods: [food({ serving_g: 40 })] }));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.data.custom_foods[0].serving_g).toBe(40);
+  });
+
+  it('una copia antigua, sin el campo, sigue siendo válida', () => {
+    expect(validateBackup(backup({ custom_foods: [food()] })).ok).toBe(true);
+  });
+});
+
 describe('validateEntry (registros del diario)', () => {
   it('acepta un registro correcto', () => {
     expect(validateEntry(entry()).ok).toBe(true);

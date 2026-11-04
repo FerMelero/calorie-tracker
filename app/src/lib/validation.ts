@@ -33,6 +33,8 @@ export type CustomFoodInput = {
   brand: string | null;
   /** Código de barras (solo dígitos, 6 a 14). Opcional. */
   barcode?: string | null;
+  /** Cuánto pesa una ración, en gramos. Opcional. */
+  serving_g?: number | null;
   kcal: number;
   protein: number;
   carbs: number;
@@ -173,6 +175,7 @@ export function validateCustomFood(
   const protein = readNumber(raw.protein, `${path}.protein`, 0, 100, errors);
   const carbs = readNumber(raw.carbs, `${path}.carbs`, 0, 100, errors);
   const fat = readNumber(raw.fat, `${path}.fat`, 0, 100, errors);
+  const serving = readOptionalNumber(raw.serving_g, `${path}.serving_g`, 0.1, LIMITS.GRAMS_MAX, errors);
   const sugars = readOptionalNumber(raw.sugars, `${path}.sugars`, 0, 100, errors);
   const fiber = readOptionalNumber(raw.fiber, `${path}.fiber`, 0, 100, errors);
   const salt = readOptionalNumber(raw.salt, `${path}.salt`, 0, 100, errors);
@@ -190,7 +193,7 @@ export function validateCustomFood(
   return {
     ok: true,
     data: {
-      name, brand, barcode, kcal: round1(kcal), protein: round1(protein), carbs: round1(carbs), fat: round1(fat),
+      name, brand, barcode, serving_g: serving === null ? null : round1(serving), kcal: round1(kcal), protein: round1(protein), carbs: round1(carbs), fat: round1(fat),
       sugars: sugars === null ? null : round1(sugars),
       fiber: fiber === null ? null : round1(fiber),
       salt: salt === null ? null : round1(salt),

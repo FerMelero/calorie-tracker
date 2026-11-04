@@ -38,7 +38,7 @@ export type Entry = {
   salt: number | null;
 };
 
-const USER_DB_VERSION = 5;
+const USER_DB_VERSION = 6;
 
 let db: SQLiteDatabase | null = null;
 
@@ -140,6 +140,10 @@ function migrate(database: SQLiteDatabase) {
   if (current < 5) {
     // Código de barras de los alimentos propios (para encontrarlos al escanear)
     database.execSync('ALTER TABLE custom_foods ADD COLUMN barcode TEXT;');
+  }
+  if (current < 6) {
+    // Ración opcional de los alimentos propios, en gramos (para el botón "1 ración" al añadirlos)
+    database.execSync('ALTER TABLE custom_foods ADD COLUMN serving_g REAL;');
   }
   database.execSync(`PRAGMA user_version = ${USER_DB_VERSION}`);
 }

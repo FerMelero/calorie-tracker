@@ -28,7 +28,7 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 | **Editar** | Los gramos se eligen al añadir (con vista previa de kcal y macros) y se pueden cambiar después, junto con la franja. |
 | **Historial** | Lista de días con sus totales; al tocar uno se ve el detalle y se puede añadir, editar o quitar comida de ese día. |
 | **Objetivos** | El usuario elige sus kcal y macros, o los calcula con Mifflin-St Jeor (sexo, edad, peso, altura, actividad y objetivo). |
-| **Mis alimentos** | El usuario crea los suyos (se guardan en `user.db`, con código de barras opcional) y salen en Buscar con 🥣. |
+| **Mis alimentos** | El usuario crea los suyos (se guardan en `user.db`, con código de barras y ración opcionales). Si un alimento tiene ración, la ventana de añadir ofrece **½, 1 y 2 raciones** con un toque y salen en Buscar con 🥣. |
 | **Copia de seguridad** | Exportar e importar JSON (diario, alimentos propios, favoritos y objetivos), validando el formato antes de importar; los duplicados se saltan. |
 | **Sugerencias** | En Más, tarjeta con el correo de sugerencias y un botón que abre el correo del móvil con el mensaje preparado (no envía nada solo). Correo configurado en `SUGGESTIONS_EMAIL`; si se vacía, la tarjeta y los botones desaparecen. |
 | **Más → Acerca de** | Atribución a Open Food Facts (ODbL) y aviso de que los objetivos son estimaciones. |
@@ -223,7 +223,7 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
 
 - [ ] **Genéricos de BEDCA** (pollo, arroz, lentejas…): hoy salen solo productos de marca (con el nuevo orden, los de supermercado primero). Revisar antes licencia y acceso. Rama `feature/bedca-import`.
 - [ ] **Recetas:** alimento compuesto cuyos valores por 100 g se calculan desde los ingredientes. Rama `feature/recetas`.
-- [ ] **Porciones y unidades** ("1 yogur", "1 cucharada") además de gramos.
+- [ ] **Porciones y unidades.** Hecho para los alimentos propios (ración en gramos, opcional). Falta: (a) las raciones que ya trae Open Food Facts (~8 % de `foods.db`, solo en gramos; hay que descartar los "100 g" por defecto y los valores fuera de rango, y añadir `serving_g` al pipeline y a la base) y (b) raciones con nombre ("1 huevo", "1 cucharada"), que dependen de tener alimentos genéricos.
 - [ ] **Mostrar fibra, azúcares y sal** en la interfaz (ya se guardan).
 - [ ] **Escáner: consulta opcional a Open Food Facts** para traer productos que no están en `foods.db`. Se decidió **no hacerlo por ahora** para mantener la app 100 % offline (el escáner solo mira la base y los alimentos propios). Si algún día se hace: sería opcional y con aviso, y habría que declararlo en la política de privacidad y en Play Store.
 - [ ] **Escáner: códigos UPC-E** (8 dígitos comprimidos) no se expanden a 12 dígitos, así que no coincidirían con `foods.db`. Poco habitual en España.
@@ -288,6 +288,7 @@ Por eso, antes de dar un fallo por arreglado hay que probarlo en una APK. Lista 
 - [ ] Hoy → "Copiar de otro día": elige día y franjas, y se copian al día actual.
 - [ ] **Franja pegada:** en Hoy, + de Desayuno → añadir algo → ir a Hoy y abrir Buscar desde la barra de abajo: ya no debe decir "Añadiendo a Desayuno" ni preseleccionarlo. Si vuelves a pulsar el + de otra franja, sí debe usarla.
 - [ ] Escáner (📷 en Buscar): pide permiso de cámara la primera vez; un producto conocido (p. ej. algo de Hacendado) abre directamente la ventana de añadir; un código inventado muestra "No lo encontramos" con las opciones; "Crear este alimento" abre el formulario con el código ya puesto y, al guardar, se abre para añadirlo; con la luz apagada, el botón 🔦 enciende el flash. Al escanear de nuevo ese código, ya sale el alimento creado.
+- [ ] Ración en alimentos propios: crear uno con "Una ración" = 40 g; al añadirlo salen los botones ½, 1 y 2 raciones (20, 40 y 80 g) y el activo se marca solo si coincide con los gramos escritos. Quitarle la ración (campo vacío) y comprobar que los botones desaparecen. Un alimento propio con ración que esté en Recientes o Favoritos también debe mostrarlos. Exportar e importar la copia: la ración se conserva.
 - [ ] Todo lo anterior en modo oscuro y con el texto del sistema en tamaño grande.
 
 Cuando haya varios arreglos pendientes, genera una sola APK `preview` para probarlos juntos (los builds gratuitos son limitados).

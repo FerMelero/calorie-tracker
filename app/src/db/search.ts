@@ -10,6 +10,8 @@ export type Food = {
   /** 'db' = foods.db; 'custom' = alimento propio del usuario */
   source: 'db' | 'custom';
   barcode: string | null;
+  /** Ración en gramos, si se conoce (hoy solo en alimentos propios) */
+  serving_g?: number | null;
   name: string;
   brand: string | null;
   kcal: number;

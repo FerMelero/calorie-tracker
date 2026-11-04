@@ -30,7 +30,7 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 | **Objetivos** | El usuario elige sus kcal y macros, o los calcula con Mifflin-St Jeor (sexo, edad, peso, altura, actividad y objetivo). |
 | **Mis alimentos** | El usuario crea los suyos (se guardan en `user.db`, con código de barras opcional) y salen en Buscar con 🥣. |
 | **Copia de seguridad** | Exportar e importar JSON (diario, alimentos propios, favoritos y objetivos), validando el formato antes de importar; los duplicados se saltan. |
-| **Sugerencias** | En Más, tarjeta con el correo de sugerencias y un botón que abre el correo del móvil con el mensaje preparado (no envía nada solo). Solo sale cuando `SUGGESTIONS_EMAIL` tiene valor. |
+| **Sugerencias** | En Más, tarjeta con el correo de sugerencias y un botón que abre el correo del móvil con el mensaje preparado (no envía nada solo). Correo configurado en `SUGGESTIONS_EMAIL`; si se vacía, la tarjeta y los botones desaparecen. |
 | **Más → Acerca de** | Atribución a Open Food Facts (ODbL) y aviso de que los objetivos son estimaciones. |
 | **Identidad y build** | Nombre "Contador de Calorías", paquete `com.fernando.contadorcalorias`, icono y pantalla de carga propios, `eas.json` con perfiles `preview` (móviles) y `preview-emulator`, `.easignore`. Expo SDK 58. |
 
@@ -43,7 +43,7 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 
 ### Siguiente en la lista
 
-Ver **"Pendiente y mejoras"**. Lo más inmediato: **poner el correo de sugerencias** en `app/src/constants/contact.ts` y probar una APK nueva (con el escáner, el teclado y el nuevo orden de resultados).
+Ver **"Pendiente y mejoras"**. Lo más inmediato: sacar una APK nueva con el correo de sugerencias (entra en la `v0.1.2`) junto con los arreglos pequeños de la lista.
 
 ## Estructura del repo
 
@@ -209,7 +209,7 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
 - [ ] **Licencia de los datos (ODbL):** publicar `foods.db` (o el modo de generarlo) en abierto y enlazarlo desde "Más → Acerca de". Hay que hacerlo si se distribuye la app.
 - [ ] **Ampliar `pipeline/brands.py`**: la lista de marcas conocidas es corta (~100) y hecha a mano; revisar qué marcas faltan o están mal asignadas.
 - [ ] **Activar el CI/CD** (una sola vez): crear el secreto `EXPO_TOKEN`, publicar la release de `foods.db` y probar el workflow con `dry_run`. Pasos en "CI/CD (GitHub Actions)".
-- [ ] **Poner el correo de sugerencias** en `app/src/constants/contact.ts` (`SUGGESTIONS_EMAIL`, hoy vacío). Mientras esté vacío, ni la tarjeta de Más ni el botón del escáner se muestran.
+- [ ] **Comprobar el correo de sugerencias en una APK** (`SUGGESTIONS_EMAIL` ya está puesto): la tarjeta sale en Más, el botón "Enviar sugerencia" abre el correo del móvil con el asunto y el pie con versión y móvil, y "Sugerir que lo añadamos" sale al escanear un código desconocido. Sin una app de correo configurada debe salir el aviso con la dirección.
 - [ ] **Datos incompletos:** en el total del día, avisar cuando algún alimento tenga fibra, azúcares o sal en `NULL` (hoy se suman como 0 sin decir nada).
 - [ ] **Probar en más dispositivos** (otras versiones de Android, pantallas pequeñas, modo oscuro, texto grande).
 

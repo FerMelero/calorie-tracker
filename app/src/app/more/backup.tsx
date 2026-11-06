@@ -17,13 +17,18 @@ const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_ERRORS_SHOWN = 8;
 
 export default function BackupScreen() {
+  // Resultado de una importación (la app sí sabe si ha ido bien)
   const [message, setMessage] = useState<string | null>(null);
+  // Resumen de la exportación. Va aparte y sin "✓": al compartir, el sistema no avisa de si el
+  // usuario guardó el archivo o cerró el menú sin elegir, así que no se puede afirmar que esté a salvo.
+  const [exportNote, setExportNote] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
   async function exportData() {
     setBusy(true);
     setMessage(null);
+    setExportNote(null);
     setErrors([]);
     try {
       const backup = await buildBackup();
@@ -40,8 +45,8 @@ export default function BackupScreen() {
         dialogTitle: 'Guardar copia de seguridad',
         UTI: 'public.json',
       });
-      setMessage(
-        `Copia creada: ${backup.entries.length} registros, ${backup.custom_foods.length} alimentos propios, ${backup.favorites.length} favoritos y ${backup.servings.length} raciones.`,
+      setExportNote(
+        `Contiene ${backup.entries.length} registros, ${backup.custom_foods.length} alimentos propios, ${backup.favorites.length} favoritos y ${backup.servings.length} raciones.`,
       );
     } catch (e) {
       setErrors([`No se pudo exportar: ${e instanceof Error ? e.message : String(e)}`]);
@@ -53,6 +58,7 @@ export default function BackupScreen() {
   async function pickAndImport() {
     setBusy(true);
     setMessage(null);
+    setExportNote(null);
     setErrors([]);
     try {
       const picked = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
@@ -118,7 +124,8 @@ export default function BackupScreen() {
           <ThemedText type="smallBold">Exportar</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             Guarda en un archivo tu diario, tus alimentos propios, tus favoritos, tus raciones y tus objetivos. Es tu única copia de
-            seguridad: la app no usa cuentas ni servidores.
+            seguridad: la app no usa cuentas ni servidores. Al pulsar, el móvil te pedirá dónde guardar el archivo (Drive, el
+            correo, una carpeta…): elige un sitio y comprueba que ha llegado.
           </ThemedText>
           <Button label="Exportar mis datos" onPress={exportData} disabled={busy} />
         </Card>
@@ -132,6 +139,20 @@ export default function BackupScreen() {
           </ThemedText>
           <Button label="Importar desde archivo" variant="outline" onPress={pickAndImport} disabled={busy} />
         </Card>
+
+        {exportNote ? (
+          <Card>
+            <ThemedText type="smallBold">Archivo preparado</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {exportNote}
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              La app no puede saber si lo has guardado o si has cerrado el menú sin elegir. Si elegiste dónde
+              dejarlo, ya tienes la copia (conviene abrir ese sitio y comprobar que el archivo está). Si cerraste
+              el menú sin elegir, pulsa Exportar otra vez.
+            </ThemedText>
+          </Card>
+        ) : null}
 
         {message ? (
           <ThemedText type="small" style={styles.success}>

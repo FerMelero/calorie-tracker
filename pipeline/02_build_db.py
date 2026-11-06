@@ -12,6 +12,7 @@ import unicodedata
 import pandas as pd
 
 from brands import brand_rank
+from servings import serving_grams
 
 CSV = "data/productos_es.csv"
 DB = "data/foods.db"
@@ -37,7 +38,8 @@ CREATE TABLE foods (
     salt     REAL,
     search_text TEXT NOT NULL,  -- nombre + marca en minúsculas y sin tildes, para búsquedas LIKE
     brand_rank INTEGER,         -- 1-49 supermercado, 50-99 se vende en uno, 100 marca conocida, NULL resto (ver brands.py)
-    scans    INTEGER NOT NULL DEFAULT 0  -- veces que se ha escaneado en Open Food Facts (popularidad)
+    scans    INTEGER NOT NULL DEFAULT 0, -- veces que se ha escaneado en Open Food Facts (popularidad)
+    serving_g REAL                       -- ración en gramos, solo si tiene sentido (ver servings.py); NULL el resto
 );
 
 CREATE VIRTUAL TABLE foods_fts USING fts5(
@@ -63,7 +65,7 @@ def limpiar(df: pd.DataFrame) -> pd.DataFrame:
     # --- Texto ---
     df["nombre"] = df["nombre"].fillna("").str.strip().str.replace(r"\s+", " ", regex=True)
     df["brands"] = df["brands"].str.strip().replace("", pd.NA)
-    for col in ("stores", "scans"):  # el CSV puede ser de una versión anterior sin estas columnas
+    for col in ("stores", "scans", "categories", "serving_quantity"):  # el CSV puede ser de una versión anterior
         if col not in df.columns:
             df[col] = pd.NA
     # Los nombres TODO EN MAYÚSCULAS se pasan a "Solo la primera en mayúscula"
@@ -93,6 +95,8 @@ def limpiar(df: pd.DataFrame) -> pd.DataFrame:
     # --- Prioridad en la búsqueda: supermercados y marcas conocidas primero ---
     df["brand_rank"] = [brand_rank(b, st) for b, st in zip(df["brands"], df["stores"])]
     df["scans"] = pd.to_numeric(df["scans"], errors="coerce").fillna(0).astype(int)
+    df["serving_g"] = [serving_grams(c, n, q) for c, n, q in zip(df["categories"], df["nombre"], df["serving_quantity"])]
+    print("Con ración (solo donde tiene sentido):", int(df["serving_g"].notna().sum()))
     print("Alimentos de supermercado (marca):", int((df["brand_rank"] < 50).sum()),
           "| solo se venden en uno:", int(df["brand_rank"].between(50, 99).sum()),
           "| marca conocida:", int((df["brand_rank"] == 100).sum()))
@@ -114,6 +118,7 @@ def deduplicar(df: pd.DataFrame) -> pd.DataFrame:
     # Al fundir duplicados se conserva la mejor prioridad y se suman los escaneos
     df["brand_rank"] = df.groupby(claves)["brand_rank"].transform("min")
     df["scans"] = df.groupby(claves)["scans"].transform("sum")
+    df["serving_g"] = df.groupby(claves)["serving_g"].transform("max")  # si algún duplicado la tiene, se conserva
     df = df.sort_values("_completitud", ascending=False, kind="stable")
     df = df.drop_duplicates(subset=claves)
     df = df.drop(columns=claves + ["_completitud"])
@@ -131,7 +136,8 @@ def crear_db(df: pd.DataFrame) -> None:
         (r.code, r.nombre, r.brands, r.kcal, r.proteinas, r.carbohidratos,
          r.grasas, r.azucares, r.fibra, r.sal,
          normalizar(f"{r.nombre} {r.brands or ''}".strip()),
-         None if r.brand_rank is None else int(r.brand_rank), int(r.scans))
+         None if r.brand_rank is None else int(r.brand_rank), int(r.scans),
+         None if r.serving_g is None else float(r.serving_g))
         for r in filas.itertuples(index=False)
     ]
 
@@ -139,7 +145,7 @@ def crear_db(df: pd.DataFrame) -> None:
     con.executescript(SCHEMA)
     con.executemany(
         "INSERT INTO foods (barcode, name, brand, kcal, protein, carbs, fat, sugars, fiber, salt, search_text,"
-        " brand_rank, scans) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        " brand_rank, scans, serving_g) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         registros,
     )
     # Rellena el índice de búsqueda a partir de la tabla foods

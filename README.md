@@ -24,11 +24,12 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 | **Buscar** | Búsqueda en español, sin importar mayúsculas ni tildes, con porcentaje de parecido y resultados de 10 en 10. Orden: supermercados primero (Mercadona/Hacendado, Carrefour, Lidl, Dia, Aldi…), luego marcas conocidas y productos más escaneados; los alimentos propios tienen ventaja. |
 | **Registro rápido** | Pestañas **Recientes** (abren con la última cantidad usada) y **Favoritos ★**, y **Copiar de otro día** (uno de los últimos 14 días, eligiendo las franjas). |
 | **Escáner de códigos de barras** | Botón 📷 en Buscar. Lee EAN/UPC con la cámara y lo compara con `foods.db` y con los alimentos propios (sin internet; un EAN-13 y su UPC de 12 dígitos cuentan como el mismo). Si está, abre directamente la ventana de añadir. Si no, ofrece **crearlo uno mismo** (el formulario ya trae el código, y al guardarlo se abre para añadirlo), escanear otro, o **sugerir el alimento por correo**. No se guarda ninguna foto y no se envía nada. |
+| **Raciones** | Si un alimento tiene ración, la ventana de añadir tiene un selector **− / +** (de media en media) que dice "1,5 bolsitas = 187,5 g". La ración sale **sola** en los ~5 600 alimentos de `foods.db` donde tiene sentido (yogures, galletas, barritas, pizzas, platos preparados, bolsitas de arroz cocido…; no en cereales, arroz seco o aceite), y **el usuario puede definirla o cambiarla en cualquier alimento** ("Definir mi ración"), con su propia palabra ("bolsita", "loncha"). Los gramos siguen siendo la base: el diario, los totales y el historial no cambian. |
 | **Hoy** | Diario con 5 franjas (desayuno, comida, snacks, merienda, cena), total del día frente al objetivo, macros con barras, y botón **+** en cada franja que abre Buscar con esa franja elegida. |
 | **Editar** | Los gramos se eligen al añadir (con vista previa de kcal y macros) y se pueden cambiar después, junto con la franja. |
 | **Historial** | Lista de días con sus totales; al tocar uno se ve el detalle y se puede añadir, editar o quitar comida de ese día. |
 | **Objetivos** | El usuario elige sus kcal y macros, o los calcula con Mifflin-St Jeor (sexo, edad, peso, altura, actividad y objetivo). |
-| **Mis alimentos** | El usuario crea los suyos (se guardan en `user.db`, con código de barras y ración opcionales). Si un alimento tiene ración, la ventana de añadir ofrece **½, 1 y 2 raciones** con un toque y salen en Buscar con 🥣. |
+| **Mis alimentos** | El usuario crea los suyos (se guardan en `user.db`, con código de barras opcional) y salen en Buscar con 🥣. |
 | **Copia de seguridad** | Exportar e importar JSON (diario, alimentos propios, favoritos y objetivos), validando el formato antes de importar; los duplicados se saltan. |
 | **Sugerencias** | En Más, tarjeta con el correo de sugerencias y un botón que abre el correo del móvil con el mensaje preparado (no envía nada solo). Correo configurado en `SUGGESTIONS_EMAIL`; si se vacía, la tarjeta y los botones desaparecen. |
 | **Más → Acerca de** | Atribución a Open Food Facts (ODbL) y aviso de que los objetivos son estimaciones. |
@@ -85,10 +86,13 @@ calorie-tracker/
 │   │   ├── user.ts             #     user.db: diario, migraciones, totales
 │   │   ├── goals.ts            #     Guardar y leer los objetivos del usuario
 │   │   ├── custom-foods.ts     #     Alimentos propios (tabla custom_foods de user.db)
+│   │   ├── servings.ts         #     Raciones definidas por el usuario (tabla servings de user.db)
 │   │   ├── favorites.ts        #     Favoritos (tabla favorites de user.db)
 │   │   └── backup.ts           #     Construir la copia de seguridad e importarla
 │   ├── src/constants/contact.ts #  Correo de sugerencias (SUGGESTIONS_EMAIL) y apertura del correo
 │   ├── src/lib/                #   Funciones puras (sin Expo); tests en src/lib/__tests__/
+│   │   ├── serving.ts          #     Raciones: plural, "1,5 bolsitas", gramos y pasos del selector
+│   │   ├── food-key.ts         #     Clave de un alimento (origen + nombre + marca) para favoritos y raciones
 │   │   ├── ranking.ts          #     Parecido y bonus por marca/popularidad de los resultados
 │   │   ├── nutrition.ts        #     Fórmula de Mifflin-St Jeor y reparto de macros
 │   │   ├── validation.ts       #     Reglas del formato de datos (alimentos, diario, objetivos, copia)
@@ -101,7 +105,8 @@ calorie-tracker/
 │   ├── 01_filter_off.py        #   Volcado de OFF -> data/productos_es.csv (solo España)
 │   ├── FOODS_DB_RELEASE        #   Nombre de la release de GitHub de la que el CI descarga foods.db
 │   ├── check_foods_db.py       #   Comprueba que un foods.db sirve para la app (local y CI)
-│   ├── test_brands.py, test_build_db.py  # Tests del pipeline (python -m unittest)
+│   ├── test_brands.py, test_servings.py, test_build_db.py  # Tests del pipeline (python -m unittest)
+│   ├── servings.py             #   En qué alimentos tiene sentido una ración (categorías y palabras, editable)
 │   ├── brands.py               #   Lista editable de supermercados y marcas conocidas (orden de prioridad)
 │   ├── 02_build_db.py          #   Limpia, deduplica y genera data/foods.db
 │   ├── data-to-sqlite.py       #   Análisis exploratorio del CSV y esquema de la BD
@@ -119,6 +124,7 @@ calorie-tracker/
 | Cambiar cómo se busca o se ordena | `app/src/db/search.ts` (pesos `BONUS_*` arriba del todo) |
 | Ver o cambiar las comprobaciones automáticas | `.github/workflows/ci.yml` |
 | Cambiar cómo se compila y publica una versión | `.github/workflows/release.yml` |
+| Cambiar en qué alimentos sale la ración automática | `pipeline/servings.py` (listas de categorías y palabras), luego regenerar `foods.db` |
 | Cambiar qué supermercados o marcas salen primero, o su orden | `pipeline/brands.py`, luego regenerar `foods.db` |
 | Cambiar la pantalla de búsqueda | `app/src/app/explore.tsx` |
 | Cambiar la pantalla del día | `app/src/app/index.tsx` |
@@ -174,6 +180,7 @@ Ejecuta lint y typecheck antes de dar una tarea por terminada. (`expo lint` da h
 
 - **`foods.db`** (solo lectura, viene empaquetada en la app): tabla `foods` con los valores **por 100 g** y `foods_fts`, el índice de búsqueda. Los datos que no existen se dejan como `NULL`, no como 0.
 - **`user.db`** (se crea en el móvil): tabla `entries` con lo que comes. Cada registro guarda los nutrientes ya calculados para los gramos tomados, así el histórico no cambia aunque cambie `foods.db`.
+- **Raciones:** dos fuentes, y la del usuario manda. (1) `foods.serving_g`, que el pipeline rellena **solo** si el producto trae ración en Open Food Facts **y** está en una categoría donde tiene sentido (`servings.py`); se descartan los "100 g" (casi siempre un valor por defecto) y los paquetes enteros en cosas pequeñas. (2) La tabla `servings` de `user.db`, con la ración que el usuario define para cualquier alimento, identificado por origen + nombre + marca (la misma clave que los favoritos, así que no depende de los ids de `foods.db`). Entra en la copia de seguridad (campo opcional `servings`).
 - **Alimentos propios:** tabla `custom_foods` en `user.db` (nunca en `foods.db`, que es de solo lectura y se reemplaza al actualizar). Cada registro del diario guarda su propia copia de los valores, así que borrar o editar un alimento propio no cambia días pasados.
 - **Favoritos y recientes:** los favoritos se guardan en `user.db` (tabla `favorites`) con una copia de sus valores por 100 g, igual que los registros. Los recientes no tienen tabla: se calculan a partir del diario (último registro de cada alimento) y sus valores por 100 g se deducen de ese registro.
 - **Copia de seguridad:** JSON con `app`, `format_version`, `custom_foods`, `favorites` (opcional, las copias antiguas no lo traen), `entries` y `goals`. Al importar se valida todo (mismas reglas que el pipeline: por 100 g, kcal 0–900, macros ≤ 100 g, nombres de 3 a 100 letras, fechas reales, franjas válidas); si algo falla no se importa nada. Los duplicados se saltan.
@@ -223,7 +230,8 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
 
 - [ ] **Genéricos de BEDCA** (pollo, arroz, lentejas…): hoy salen solo productos de marca (con el nuevo orden, los de supermercado primero). Revisar antes licencia y acceso. Rama `feature/bedca-import`.
 - [ ] **Recetas:** alimento compuesto cuyos valores por 100 g se calculan desde los ingredientes. Rama `feature/recetas`.
-- [ ] **Porciones y unidades.** Hecho para los alimentos propios (ración en gramos, opcional). Falta: (a) las raciones que ya trae Open Food Facts (~8 % de `foods.db`, solo en gramos; hay que descartar los "100 g" por defecto y los valores fuera de rango, y añadir `serving_g` al pipeline y a la base) y (b) raciones con nombre ("1 huevo", "1 cucharada"), que dependen de tener alimentos genéricos.
+- [ ] **Raciones con nombre para alimentos genéricos** ("1 huevo", "1 cucharada", "1 loncha"): hecho el mecanismo (palabra y gramos a elegir por el usuario) y las raciones de Open Food Facts donde tienen sentido (3 % de la base). Falta precargarlas para genéricos, que dependen de tener esos alimentos (BEDCA o un pack revisado a mano).
+- [ ] **Revisar la lista de `pipeline/servings.py`** con uso real: hoy cubre el 2-3 % de la base (yogures, galletas, barritas, pizzas, platos preparados, arroz de bolsita) y habrá categorías que falten o sobren. Es una lista editable; tras cambiarla hay que regenerar `foods.db`.
 - [ ] **Mostrar fibra, azúcares y sal** en la interfaz (ya se guardan).
 - [ ] **Escáner: consulta opcional a Open Food Facts** para traer productos que no están en `foods.db`. Se decidió **no hacerlo por ahora** para mantener la app 100 % offline (el escáner solo mira la base y los alimentos propios). Si algún día se hace: sería opcional y con aviso, y habría que declararlo en la política de privacidad y en Play Store.
 - [ ] **Escáner: códigos UPC-E** (8 dígitos comprimidos) no se expanden a 12 dígitos, así que no coincidirían con `foods.db`. Poco habitual en España.
@@ -288,7 +296,7 @@ Por eso, antes de dar un fallo por arreglado hay que probarlo en una APK. Lista 
 - [ ] Hoy → "Copiar de otro día": elige día y franjas, y se copian al día actual.
 - [ ] **Franja pegada:** en Hoy, + de Desayuno → añadir algo → ir a Hoy y abrir Buscar desde la barra de abajo: ya no debe decir "Añadiendo a Desayuno" ni preseleccionarlo. Si vuelves a pulsar el + de otra franja, sí debe usarla.
 - [ ] Escáner (📷 en Buscar): pide permiso de cámara la primera vez; un producto conocido (p. ej. algo de Hacendado) abre directamente la ventana de añadir; un código inventado muestra "No lo encontramos" con las opciones; "Crear este alimento" abre el formulario con el código ya puesto y, al guardar, se abre para añadirlo; con la luz apagada, el botón 🔦 enciende el flash. Al escanear de nuevo ese código, ya sale el alimento creado.
-- [ ] Ración en alimentos propios: crear uno con "Una ración" = 40 g; al añadirlo salen los botones ½, 1 y 2 raciones (20, 40 y 80 g) y el activo se marca solo si coincide con los gramos escritos. Quitarle la ración (campo vacío) y comprobar que los botones desaparecen. Un alimento propio con ración que esté en Recientes o Favoritos también debe mostrarlos. Exportar e importar la copia: la ración se conserva.
+- [ ] Raciones: (a) buscar un yogur o unas galletas de supermercado: al abrirlos sale el selector "Raciones" con "indicada por el fabricante", y − / + cambian los gramos de media en media; (b) buscar unos cereales o un aceite: **no** sale selector, solo "Definir mi ración (opcional)"; (c) en un alimento cualquiera, "Definir mi ración" con 125 g y "bolsita": el selector pasa a decir "1 bolsita = 125 g" y "1,5 bolsitas"; (d) cerrar y volver a abrirlo, y también desde Recientes y Favoritos: la ración sigue ahí; (e) "Cambiar mi ración" y "Quitar mi ración" (si había una del fabricante, vuelve a esa); (f) crear un alimento propio con ración en el formulario y renombrarlo después; (g) exportar e importar la copia: las raciones se conservan; (h) escribir los gramos a mano y comprobar que la ración no pisa lo escrito.
 - [ ] Todo lo anterior en modo oscuro y con el texto del sistema en tamaño grande.
 
 Cuando haya varios arreglos pendientes, genera una sola APK `preview` para probarlos juntos (los builds gratuitos son limitados).
@@ -362,6 +370,9 @@ También se puede lanzar a mano (**Actions → Release (APK) → Run workflow**)
 1. **Secreto `EXPO_TOKEN`.** En <https://expo.dev> → tu cuenta → **Access tokens** → crear uno. En GitHub → **Settings → Secrets and variables → Actions → New repository secret** → nombre `EXPO_TOKEN`, valor el token.
 2. **Publicar `foods.db`.** En GitHub → **Releases → Draft a new release**: tag nuevo `foods-db-2026-10` (el mismo nombre que `pipeline/FOODS_DB_RELEASE`), título "foods.db (volcado de Open Food Facts, octubre 2026)", adjunta `app/assets/db/foods.db` y marca **pre-release** (así no le quita el "Latest" a las versiones de la app). Pon en las notas la fecha del volcado y la licencia: *"Base de datos derivada de Open Food Facts, licencia ODbL"*.
 3. **Probar sin gastar build:** **Actions → Release (APK) → Run workflow** con `dry_run` activado. Debe terminar en verde y el resumen dirá "Comprobación correcta ✓".
+
+### La release actual de `foods.db`
+`pipeline/FOODS_DB_RELEASE` apunta ahora a **`foods-db-2026-11`**, la base con raciones y `serving_g` (la `foods-db-2026-10` no la tiene, y `check_foods_db.py` la rechazaría). **Hay que publicar esa release antes de poner un tag**: tag `foods-db-2026-11`, pre-release, con `app/assets/db/foods.db` adjunto.
 
 ### Cuando cambies la base de alimentos
 Regenerar con el pipeline → `python3 pipeline/check_foods_db.py pipeline/data/foods.db` → crear una release nueva (`foods-db-AAAA-MM`) con el archivo → cambiar `pipeline/FOODS_DB_RELEASE` → cambiar `FOODS_DB_NAME` en `app/src/app/_layout.tsx` (para que los móviles copien la nueva).

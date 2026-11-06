@@ -24,13 +24,14 @@ spec.loader.exec_module(build_db)
 # pipeline sin cambiar la app, este test falla en vez de fallar en el móvil.
 COLUMNAS_QUE_USA_LA_APP = {
     "id", "barcode", "name", "brand", "kcal", "protein", "carbs", "fat",
-    "sugars", "fiber", "salt", "search_text", "brand_rank", "scans",
+    "sugars", "fiber", "salt", "search_text", "brand_rank", "scans", "serving_g",
 }
 
 
 def producto(**campos):
     base = dict(
         code="8480000000001", nombre="Jamón serrano", brands="Hacendado", stores=None, scans=3,
+        categories=None, serving_quantity=None,
         kcal=250.0, proteinas=30.0, carbohidratos=0.5, grasas=14.0, azucares=0.0, fibra=None, sal=4.0,
     )
     base.update(campos)
@@ -68,6 +69,19 @@ class LimpiezaTest(unittest.TestCase):
         self.assertEqual(list(limpio["scans"]), [3, 0])
 
 
+class RacionTest(unittest.TestCase):
+    def test_la_racion_se_calcula_al_limpiar(self):
+        limpio = build_db.limpiar(frame(
+            producto(nombre="Yogur griego", categories="en:yogurts", serving_quantity=125.0),
+            producto(code="2", nombre="Yogur natural", categories="en:yogurts", serving_quantity=100.0),  # 100 g: por defecto
+            producto(code="3", nombre="Cereales de desayuno", categories="en:breakfast-cereals", serving_quantity=30.0),
+        ))
+        racion = limpio["serving_g"]
+        self.assertEqual(racion.iloc[0], 125.0)
+        self.assertTrue(pd.isna(racion.iloc[1]))  # 100 g: valor por defecto
+        self.assertTrue(pd.isna(racion.iloc[2]))  # cereales: sin ración
+
+
 class DeduplicadoTest(unittest.TestCase):
     def test_une_nombre_y_marca_iguales_sin_distinguir_mayusculas(self):
         df = build_db.limpiar(frame(
@@ -87,8 +101,10 @@ class BaseDeDatosTest(unittest.TestCase):
         build_db.DB = os.path.join(self.tmp.name, "foods.db")
         df = build_db.limpiar(frame(
             producto(),
-            producto(code="0012345678905", nombre="Yogur natural", brands="Danone", kcal=61.0, proteinas=3.5, carbohidratos=4.7, grasas=3.3),
-            producto(code="3", nombre="Arroz", brands=None, scans=None, kcal=350.0, proteinas=7.0, carbohidratos=78.0, grasas=0.6),
+            producto(code="0012345678905", nombre="Yogur natural", brands="Danone", kcal=61.0, proteinas=3.5, carbohidratos=4.7, grasas=3.3,
+                     categories="en:yogurts,en:dairies", serving_quantity=125.0),
+            producto(code="3", nombre="Arroz", brands=None, scans=None, kcal=350.0, proteinas=7.0, carbohidratos=78.0, grasas=0.6,
+                     categories="en:rices", serving_quantity=62.5),  # ración de arroz seco: no tiene sentido
         ))
         build_db.crear_db(build_db.deduplicar(df))
         self.con = sqlite3.connect(build_db.DB)
@@ -114,6 +130,12 @@ class BaseDeDatosTest(unittest.TestCase):
         for escaneado in ("12345678905", "0012345678905"):
             fila = self.con.execute("SELECT name FROM foods WHERE ltrim(barcode, '0') = ?", (escaneado.lstrip("0"),)).fetchone()
             self.assertEqual(fila[0], "Yogur natural", escaneado)
+
+    def test_la_racion_solo_se_guarda_donde_tiene_sentido(self):
+        racion = dict(self.con.execute("SELECT name, serving_g FROM foods"))
+        self.assertEqual(racion["Yogur natural"], 125.0)
+        self.assertIsNone(racion["Arroz"])  # tenía ración en OFF, pero el arroz seco no la lleva
+        self.assertIsNone(racion["Jamón serrano"])  # no tenía
 
     def test_orden_por_prioridad_de_marca(self):
         filas = self.con.execute("SELECT name FROM foods ORDER BY (brand_rank IS NULL), brand_rank").fetchall()

@@ -12,7 +12,7 @@ import sys
 # Lo mismo que lee la app (app/src/db/search.ts). Si falta alguna columna, la búsqueda fallaría.
 COLUMNAS = {
     "id", "barcode", "name", "brand", "kcal", "protein", "carbs", "fat",
-    "sugars", "fiber", "salt", "search_text", "brand_rank", "scans",
+    "sugars", "fiber", "salt", "search_text", "brand_rank", "scans", "serving_g",
 }
 MIN_BYTES = 15 * 1024 * 1024
 MIN_ALIMENTOS = 100_000
@@ -58,6 +58,14 @@ def main(ruta: str) -> int:
         print(f"Con marca de supermercado: {super_}")
         if super_ == 0:
             errores.append("Ningún alimento tiene marca de supermercado (¿se ejecutó brands.py?)")
+
+        con_racion = con.execute("SELECT COUNT(*) FROM foods WHERE serving_g IS NOT NULL").fetchone()[0]
+        print(f"Con ración: {con_racion}")
+        if con_racion == 0:
+            errores.append("Ningún alimento tiene ración (¿se ejecutó servings.py?)")
+        fuera = con.execute("SELECT COUNT(*) FROM foods WHERE serving_g < 1 OR serving_g > 1000").fetchone()[0]
+        if fuera:
+            errores.append(f"{fuera} alimentos con una ración fuera de 1-1000 g")
 
         raros = con.execute(
             "SELECT COUNT(*) FROM foods WHERE kcal < 0 OR kcal > 900 OR protein + carbs + fat > 100.05"

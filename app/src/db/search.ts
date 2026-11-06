@@ -10,7 +10,7 @@ export type Food = {
   /** 'db' = foods.db; 'custom' = alimento propio del usuario */
   source: 'db' | 'custom';
   barcode: string | null;
-  /** Ración en gramos, si se conoce (hoy solo en alimentos propios) */
+  /** Ración en gramos que trae foods.db (solo donde tiene sentido); la del usuario va aparte */
   serving_g?: number | null;
   name: string;
   brand: string | null;
@@ -49,7 +49,7 @@ export async function searchFoods(db: SQLiteDatabase, rawQuery: string): Promise
   if (query.length < MIN_QUERY_LENGTH) return [];
 
   const columns =
-    'f.id, f.barcode, f.name, f.brand, f.kcal, f.protein, f.carbs, f.fat, f.sugars, f.fiber, f.salt, f.search_text, f.brand_rank, f.scans';
+    'f.id, f.barcode, f.name, f.brand, f.kcal, f.protein, f.carbs, f.fat, f.sugars, f.fiber, f.salt, f.search_text, f.brand_rank, f.scans, f.serving_g';
 
   // Con miles de coincidencias ("pollo"), los 100 más parecidos pueden no incluir ninguno de
   // supermercado. Por eso se piden tres listas de candidatas y se ordenan juntas al final.
@@ -109,7 +109,7 @@ export async function findFoodByBarcode(db: SQLiteDatabase, raw: string): Promis
   if (custom) return customToFood(custom);
 
   const row = await db.getFirstAsync<Omit<Food, 'source'>>(
-    `SELECT id, barcode, name, brand, kcal, protein, carbs, fat, sugars, fiber, salt
+    `SELECT id, barcode, name, brand, serving_g, kcal, protein, carbs, fat, sugars, fiber, salt
      FROM foods WHERE ltrim(barcode, '0') = ?
      ORDER BY (brand_rank IS NULL), brand_rank, scans DESC LIMIT 1`,
     [barcodeKey(code)],

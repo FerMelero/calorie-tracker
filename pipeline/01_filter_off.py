@@ -3,7 +3,8 @@ Filtra el volcado de Open Food Facts: solo productos de España con kcal y macro
 Ejecutar desde la carpeta pipeline/:  python 01_filter_off.py
 
 `stores` (dónde se vende) y `scans` (veces que se ha escaneado) sirven para ordenar los
-resultados de búsqueda: primero supermercados y marcas conocidas.
+resultados de búsqueda: primero supermercados y marcas conocidas. `categories` y
+`serving_quantity` sirven para decidir en qué alimentos tiene sentido ofrecer una ración (servings.py).
 """
 import duckdb
 
@@ -19,6 +20,8 @@ COPY (
          brands,
          stores,
          TRY_CAST(unique_scans_n AS BIGINT) AS scans,
+         categories_tags AS categories,
+         TRY_CAST(serving_quantity AS DOUBLE) AS serving_quantity,
          TRY_CAST("energy-kcal_100g" AS DOUBLE) AS kcal,
          TRY_CAST(proteins_100g AS DOUBLE) AS proteinas,
          TRY_CAST(carbohydrates_100g AS DOUBLE) AS carbohidratos,

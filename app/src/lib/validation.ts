@@ -9,6 +9,7 @@
 
 import { cleanBarcode } from '@/lib/barcode';
 import { isValidISODate } from '@/lib/dates';
+import { MAX_LABEL_LENGTH } from '@/lib/serving';
 
 export const MEAL_KEYS = ['desayuno', 'comida', 'snacks', 'merienda', 'cena'] as const;
 export type MealKey = (typeof MEAL_KEYS)[number];
@@ -33,8 +34,6 @@ export type CustomFoodInput = {
   brand: string | null;
   /** Código de barras (solo dígitos, 6 a 14). Opcional. */
   barcode?: string | null;
-  /** Cuánto pesa una ración, en gramos. Opcional. */
-  serving_g?: number | null;
   kcal: number;
   protein: number;
   carbs: number;
@@ -59,6 +58,17 @@ export type EntryInput = {
   sugars: number | null;
   fiber: number | null;
   salt: number | null;
+};
+
+/** Ración que el usuario ha definido para un alimento (de cualquier origen). */
+export type ServingInput = {
+  source: 'db' | 'custom';
+  name: string;
+  brand: string | null;
+  /** Gramos de una ración */
+  grams: number;
+  /** Cómo la llama el usuario ("bolsita", "loncha"…); null = "ración" */
+  label: string | null;
 };
 
 /** Alimento favorito: copia de sus valores por 100 g y de dónde venía. */
@@ -87,6 +97,7 @@ export type Backup = {
   exported_at: string;
   custom_foods: CustomFoodInput[];
   favorites: FavoriteInput[];
+  servings: ServingInput[];
   entries: EntryInput[];
   goals: GoalsInput | null;
 };
@@ -175,7 +186,6 @@ export function validateCustomFood(
   const protein = readNumber(raw.protein, `${path}.protein`, 0, 100, errors);
   const carbs = readNumber(raw.carbs, `${path}.carbs`, 0, 100, errors);
   const fat = readNumber(raw.fat, `${path}.fat`, 0, 100, errors);
-  const serving = readOptionalNumber(raw.serving_g, `${path}.serving_g`, 0.1, LIMITS.GRAMS_MAX, errors);
   const sugars = readOptionalNumber(raw.sugars, `${path}.sugars`, 0, 100, errors);
   const fiber = readOptionalNumber(raw.fiber, `${path}.fiber`, 0, 100, errors);
   const salt = readOptionalNumber(raw.salt, `${path}.salt`, 0, 100, errors);
@@ -193,7 +203,7 @@ export function validateCustomFood(
   return {
     ok: true,
     data: {
-      name, brand, barcode, serving_g: serving === null ? null : round1(serving), kcal: round1(kcal), protein: round1(protein), carbs: round1(carbs), fat: round1(fat),
+      name, brand, barcode, kcal: round1(kcal), protein: round1(protein), carbs: round1(carbs), fat: round1(fat),
       sugars: sugars === null ? null : round1(sugars),
       fiber: fiber === null ? null : round1(fiber),
       salt: salt === null ? null : round1(salt),
@@ -209,6 +219,20 @@ export function validateFavorite(raw: unknown, path = 'favorito'): ValidationRes
   if (!food.ok) errors.push(...food.errors);
   if (errors.length > 0 || source === null || !food.ok) return { ok: false, errors };
   return { ok: true, data: { ...food.data, source } };
+}
+
+export function validateServing(raw: unknown, path = 'racion'): ValidationResult<ServingInput> {
+  const errors: string[] = [];
+  if (!isObj(raw)) return { ok: false, errors: [`${path}: tiene que ser un objeto`] };
+
+  const source = readEnum(raw.source, `${path}.source`, ['db', 'custom'] as const, errors);
+  const name = readText(raw.name, `${path}.name`, 1, LIMITS.NAME_MAX, errors);
+  const brand = readOptionalText(raw.brand, `${path}.brand`, LIMITS.BRAND_MAX, errors);
+  const grams = readNumber(raw.grams, `${path}.grams`, 0.1, LIMITS.GRAMS_MAX, errors);
+  const label = readOptionalText(raw.label, `${path}.label`, MAX_LABEL_LENGTH, errors);
+
+  if (errors.length > 0 || source === null || name === null || grams === null) return { ok: false, errors };
+  return { ok: true, data: { source, name, brand, grams: round1(grams), label } };
 }
 
 // ---------------------------------------------------------------- registros del diario
@@ -311,6 +335,7 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
   const errors: string[] = [];
   const customFoods: CustomFoodInput[] = [];
   const favorites: FavoriteInput[] = [];
+  const servings: ServingInput[] = [];
   const entries: EntryInput[] = [];
   let goals: GoalsInput | null = null;
 
@@ -330,6 +355,18 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
       raw.favorites.forEach((item, i) => {
         const r = validateFavorite(item, `favorites[${i}]`);
         if (r.ok) favorites.push(r.data);
+        else errors.push(...r.errors);
+      });
+    }
+  }
+
+  // servings también es opcional: las copias antiguas no lo traen
+  if (raw.servings !== undefined && raw.servings !== null) {
+    if (!Array.isArray(raw.servings)) errors.push('servings: tiene que ser una lista');
+    else {
+      raw.servings.forEach((item, i) => {
+        const r = validateServing(item, `servings[${i}]`);
+        if (r.ok) servings.push(r.data);
         else errors.push(...r.errors);
       });
     }
@@ -360,6 +397,7 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
       exported_at: typeof raw.exported_at === 'string' ? raw.exported_at : '',
       custom_foods: customFoods,
       favorites,
+      servings,
       entries,
       goals,
     },

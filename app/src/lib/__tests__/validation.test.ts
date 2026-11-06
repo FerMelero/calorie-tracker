@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { LIMITS, validateBackup, validateCustomFood, validateEntry, validateGoals } from '@/lib/validation';
+import { MAX_LABEL_LENGTH } from '@/lib/serving';
+import { LIMITS, validateBackup, validateCustomFood, validateEntry, validateGoals, validateServing } from '@/lib/validation';
 
 const food = (over: Record<string, unknown> = {}) => ({
   name: 'Granola casera', kcal: 450, protein: 10, carbs: 60, fat: 15, ...over,
@@ -60,37 +61,49 @@ describe('validateCustomFood (valores por 100 g)', () => {
   });
 });
 
-describe('ración de los alimentos propios (opcional)', () => {
-  it('sin ración es válido y queda a null', () => {
-    for (const v of [undefined, null]) {
-      const r = validateCustomFood(food({ serving_g: v }));
-      expect(r.ok).toBe(true);
-      if (r.ok) expect(r.data.serving_g).toBeNull();
-    }
+describe('raciones que define el usuario', () => {
+  const racion = (over: Record<string, unknown> = {}) => ({
+    source: 'db', name: 'Arroz cocido basmati', brand: 'Hacendado', grams: 125, label: 'bolsita', ...over,
   });
 
-  it('acepta una ración de 0,1 a 10 000 g y la redondea a un decimal', () => {
-    const r = validateCustomFood(food({ serving_g: 12.74 }));
-    expect(r.ok).toBe(true);
-    if (r.ok) expect(r.data.serving_g).toBe(12.7);
-    expect(validateCustomFood(food({ serving_g: 0.1 })).ok).toBe(true);
-    expect(validateCustomFood(food({ serving_g: LIMITS.GRAMS_MAX })).ok).toBe(true);
+  it('acepta una ración con nombre, sin nombre o con la marca vacía', () => {
+    expect(validateServing(racion()).ok).toBe(true);
+    expect(validateServing(racion({ label: null })).ok).toBe(true);
+    expect(validateServing(racion({ label: undefined, brand: null })).ok).toBe(true);
+    expect(validateServing(racion({ label: '   ' })).ok).toBe(true); // en blanco = sin nombre
   });
 
-  it('rechaza raciones de 0, negativas, enormes o que no son un número', () => {
+  it('los gramos van de 0,1 a 10 000 y se redondean a un decimal', () => {
     for (const bad of [0, -5, LIMITS.GRAMS_MAX + 1, 'cuarenta', Number.NaN]) {
-      expect(validateCustomFood(food({ serving_g: bad })).ok).toBe(false);
+      expect(validateServing(racion({ grams: bad })).ok).toBe(false);
     }
+    const r = validateServing(racion({ grams: 12.74 }));
+    if (r.ok) expect(r.data.grams).toBe(12.7);
   });
 
-  it('viaja en la copia de seguridad', () => {
-    const r = validateBackup(backup({ custom_foods: [food({ serving_g: 40 })] }));
+  it('el nombre de la ración tiene un máximo de caracteres', () => {
+    expect(validateServing(racion({ label: 'x'.repeat(MAX_LABEL_LENGTH) })).ok).toBe(true);
+    expect(validateServing(racion({ label: 'x'.repeat(MAX_LABEL_LENGTH + 1) })).ok).toBe(false);
+  });
+
+  it('exige un origen válido y un nombre de alimento', () => {
+    expect(validateServing(racion({ source: 'otro' })).ok).toBe(false);
+    expect(validateServing(racion({ name: '' })).ok).toBe(false);
+  });
+
+  it('viaja en la copia de seguridad y una copia antigua sin el campo sigue valiendo', () => {
+    const r = validateBackup(backup({ servings: [racion()] }));
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.data.custom_foods[0].serving_g).toBe(40);
+    if (r.ok) expect(r.data.servings).toHaveLength(1);
+    const antigua = validateBackup(backup());
+    expect(antigua.ok).toBe(true);
+    if (antigua.ok) expect(antigua.data.servings).toEqual([]);
   });
 
-  it('una copia antigua, sin el campo, sigue siendo válida', () => {
-    expect(validateBackup(backup({ custom_foods: [food()] })).ok).toBe(true);
+  it('una ración mala hace fallar la copia y dice cuál', () => {
+    const r = validateBackup(backup({ servings: [racion(), racion({ grams: 0 })] }));
+    expect(r.ok).toBe(false);
+    expect(errorsOf(r).join('\n')).toContain('servings[1].grams');
   });
 });
 

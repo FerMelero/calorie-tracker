@@ -17,7 +17,7 @@ function HideSplashWhenReady() {
 }
 
 // Si regeneras foods.db, cambia el número del nombre: así la app copia la versión nueva.
-const FOODS_DB_NAME = 'foods-2.db';
+const FOODS_DB_NAME = 'foods-3.db';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();

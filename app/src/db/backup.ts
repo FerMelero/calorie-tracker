@@ -1,4 +1,6 @@
 import { favoriteKey, listFavoritesForBackup } from '@/db/favorites';
+import { listServingsForBackup } from '@/db/servings';
+import { foodKey as servingKey } from '@/lib/food-key';
 import { getGoals, saveGoals } from '@/db/goals';
 import { getUserDb } from '@/db/user';
 import { normalize } from '@/lib/text';
@@ -27,6 +29,7 @@ export async function buildBackup(): Promise<Backup> {
     exported_at: new Date().toISOString(),
     custom_foods: customFoods,
     favorites: await listFavoritesForBackup(),
+    servings: await listServingsForBackup(),
     entries,
     goals: await getGoals(),
   };
@@ -36,6 +39,7 @@ export type ImportSummary = {
   addedFoods: number;
   skippedFoods: number;
   addedFavorites: number;
+  addedServings: number;
   addedEntries: number;
   skippedEntries: number;
   goalsReplaced: boolean;
@@ -53,7 +57,7 @@ const entryKey = (e: EntryInput) =>
 export async function importBackup(backup: Backup): Promise<ImportSummary> {
   const db = getUserDb();
   const summary: ImportSummary = {
-    addedFoods: 0, skippedFoods: 0, addedFavorites: 0, addedEntries: 0, skippedEntries: 0, goalsReplaced: false,
+    addedFoods: 0, skippedFoods: 0, addedFavorites: 0, addedServings: 0, addedEntries: 0, skippedEntries: 0, goalsReplaced: false,
   };
 
   await db.withTransactionAsync(async () => {
@@ -85,6 +89,15 @@ export async function importBackup(backup: Backup): Promise<ImportSummary> {
         [favoriteKey(f), f.source, f.name, f.brand, f.kcal, f.protein, f.carbs, f.fat, f.sugars, f.fiber, f.salt],
       );
       summary.addedFavorites += result.changes;
+    }
+
+    // Si ya tenías una ración definida para ese alimento, se respeta la tuya (INSERT OR IGNORE)
+    for (const sv of backup.servings) {
+      const result = await db.runAsync(
+        'INSERT OR IGNORE INTO servings (key, source, name, brand, grams, label) VALUES (?, ?, ?, ?, ?, ?)',
+        [servingKey(sv), sv.source, sv.name, sv.brand, sv.grams, sv.label],
+      );
+      summary.addedServings += result.changes;
     }
 
     const existingEntries = await db.getAllAsync<EntryInput>(

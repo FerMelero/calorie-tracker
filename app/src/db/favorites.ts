@@ -1,14 +1,12 @@
 import type { Food } from '@/db/search';
 import { getUserDb } from '@/db/user';
-import { normalize } from '@/lib/text';
+import { foodKey } from '@/lib/food-key';
 import type { FavoriteInput } from '@/lib/validation';
 
 type FavoriteRow = Omit<Food, 'id' | 'barcode'> & { id: number; source_id: number };
 
 /** Identifica un alimento favorito por su origen, nombre y marca (no por el id, que puede cambiar). */
-export function favoriteKey(food: Pick<Food, 'source' | 'name' | 'brand'>): string {
-  return normalize(`${food.source}|${food.name}|${food.brand ?? ''}`);
-}
+export const favoriteKey: (food: Pick<Food, 'source' | 'name' | 'brand'>) => string = foodKey;
 
 const COLUMNS = 'id, source, source_id, name, brand, kcal, protein, carbs, fat, sugars, fiber, salt';
 

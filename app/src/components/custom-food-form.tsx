@@ -7,8 +7,10 @@ import { KeyboardAwareScrollView } from '@/components/keyboard-aware-scroll-view
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { getCustomFood, saveCustomFood } from '@/db/custom-foods';
+import { getUserServing, removeUserServing, setUserServing } from '@/db/servings';
+import { MAX_LABEL_LENGTH } from '@/lib/serving';
 import { parseNumber } from '@/lib/nutrition';
-import { validateCustomFood } from '@/lib/validation';
+import { LIMITS, validateCustomFood } from '@/lib/validation';
 
 const FIELD_NAMES: Record<string, string> = {
   name: 'Nombre', brand: 'Marca', barcode: 'Código de barras', kcal: 'Calorías', protein: 'Proteínas',
@@ -40,6 +42,10 @@ export function CustomFoodForm({ editingId, initialBarcode, onSaved }: Props) {
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
   const [barcode, setBarcode] = useState(initialBarcode ?? '');
+  const [serving, setServing] = useState('');
+  const [servingLabel, setServingLabel] = useState('');
+  // Nombre y marca con los que se guardó la ración, por si se cambian al editar
+  const [saved, setSaved] = useState<{ name: string; brand: string | null } | null>(null);
   const [kcal, setKcal] = useState('');
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
@@ -56,6 +62,12 @@ export function CustomFoodForm({ editingId, initialBarcode, onSaved }: Props) {
       setName(f.name);
       setBrand(f.brand ?? '');
       setBarcode(f.barcode ?? '');
+      setSaved({ name: f.name, brand: f.brand });
+      getUserServing({ source: 'custom', name: f.name, brand: f.brand }).then((sv) => {
+        if (!sv) return;
+        setServing(String(sv.grams));
+        setServingLabel(sv.label ?? '');
+      });
       setKcal(String(f.kcal));
       setProtein(String(f.protein));
       setCarbs(String(f.carbs));
@@ -83,7 +95,21 @@ export function CustomFoodForm({ editingId, initialBarcode, onSaved }: Props) {
       setErrors(result.errors.map(friendlyError));
       return;
     }
+    // La ración (opcional) se valida aparte: tiene sus propios límites
+    const servingGrams = optionalNumber(serving);
+    if (servingGrams !== null && !(servingGrams >= 0.1 && servingGrams <= LIMITS.GRAMS_MAX)) {
+      setErrors([`Ración: tiene que estar entre 0,1 y ${LIMITS.GRAMS_MAX} g`]);
+      return;
+    }
+
     const id = await saveCustomFood(result.data, editingId);
+    const identity = { source: 'custom' as const, name: result.data.name, brand: result.data.brand };
+    // Si se ha cambiado el nombre o la marca, la ración antigua ya no corresponde
+    if (saved && (saved.name !== identity.name || saved.brand !== identity.brand)) {
+      await removeUserServing({ source: 'custom', ...saved });
+    }
+    if (servingGrams === null) await removeUserServing(identity);
+    else await setUserServing(identity, servingGrams, servingLabel.trim() || null);
     onSaved(id);
   }
 
@@ -114,6 +140,23 @@ export function CustomFoodForm({ editingId, initialBarcode, onSaved }: Props) {
           <NumberField label="Carbohidratos" value={carbs} onChangeText={setCarbs} unit="g" />
           <NumberField label="Grasas" value={fat} onChangeText={setFat} unit="g" />
         </View>
+      </View>
+
+      <View style={styles.group}>
+        <ThemedText style={styles.title}>Ración (opcional)</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          Cuánto pesa una ración, por ejemplo 125 si tu bolsita son 125 g. Al añadir el alimento podrás elegir
+          cuántas raciones tomas y la app calcula los gramos. Si no tiene sentido, déjalo vacío.
+        </ThemedText>
+        <View style={styles.fields}>
+          <NumberField label="Una ración" value={serving} onChangeText={setServing} unit="g" />
+        </View>
+        <TextField
+          label="¿Cómo la llamas? (opcional)"
+          value={servingLabel}
+          onChangeText={(t) => setServingLabel(t.slice(0, MAX_LABEL_LENGTH))}
+          placeholder="ración, bolsita, loncha, unidad…"
+        />
       </View>
 
       <View style={styles.group}>

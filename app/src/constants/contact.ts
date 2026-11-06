@@ -3,9 +3,10 @@ import { Linking, Platform } from 'react-native';
 
 /**
  * Correo al que los usuarios envían sugerencias (alimentos que faltan, ideas, fallos).
- * PENDIENTE: pon aquí tu correo. Mientras esté vacío, los botones de sugerencias no se muestran.
+ * Si se deja vacío, los botones y la tarjeta de sugerencias no se muestran.
  */
-export const SUGGESTIONS_EMAIL = '';
+// `as string`: sin esto TypeScript deduce que nunca está vacío y se queja de las comprobaciones `=== ''`
+export const SUGGESTIONS_EMAIL = 'calorieuserservice@gmail.com' as string;
 
 /** Datos útiles para que quien recibe el correo sepa qué versión y móvil tiene el usuario. */
 function appInfo(): string {

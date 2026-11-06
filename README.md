@@ -24,13 +24,14 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 | **Buscar** | Búsqueda en español, sin importar mayúsculas ni tildes, con porcentaje de parecido y resultados de 10 en 10. Orden: supermercados primero (Mercadona/Hacendado, Carrefour, Lidl, Dia, Aldi…), luego marcas conocidas y productos más escaneados; los alimentos propios tienen ventaja. |
 | **Registro rápido** | Pestañas **Recientes** (abren con la última cantidad usada) y **Favoritos ★**, y **Copiar de otro día** (uno de los últimos 14 días, eligiendo las franjas). |
 | **Escáner de códigos de barras** | Botón 📷 en Buscar. Lee EAN/UPC con la cámara y lo compara con `foods.db` y con los alimentos propios (sin internet; un EAN-13 y su UPC de 12 dígitos cuentan como el mismo). Si está, abre directamente la ventana de añadir. Si no, ofrece **crearlo uno mismo** (el formulario ya trae el código, y al guardarlo se abre para añadirlo), escanear otro, o **sugerir el alimento por correo**. No se guarda ninguna foto y no se envía nada. |
+| **Raciones** | Si un alimento tiene ración, la ventana de añadir tiene un selector **− / +** (de media en media) que dice "1,5 bolsitas = 187,5 g". La ración sale **sola** en los ~5 600 alimentos de `foods.db` donde tiene sentido (yogures, galletas, barritas, pizzas, platos preparados, bolsitas de arroz cocido…; no en cereales, arroz seco o aceite), y **el usuario puede definirla o cambiarla en cualquier alimento** ("Definir mi ración"), con su propia palabra ("bolsita", "loncha"). Los gramos siguen siendo la base: el diario, los totales y el historial no cambian. |
 | **Hoy** | Diario con 5 franjas (desayuno, comida, snacks, merienda, cena), total del día frente al objetivo, macros con barras, y botón **+** en cada franja que abre Buscar con esa franja elegida. |
 | **Editar** | Los gramos se eligen al añadir (con vista previa de kcal y macros) y se pueden cambiar después, junto con la franja. |
 | **Historial** | Lista de días con sus totales; al tocar uno se ve el detalle y se puede añadir, editar o quitar comida de ese día. |
 | **Objetivos** | El usuario elige sus kcal y macros, o los calcula con Mifflin-St Jeor (sexo, edad, peso, altura, actividad y objetivo). |
 | **Mis alimentos** | El usuario crea los suyos (se guardan en `user.db`, con código de barras opcional) y salen en Buscar con 🥣. |
 | **Copia de seguridad** | Exportar e importar JSON (diario, alimentos propios, favoritos y objetivos), validando el formato antes de importar; los duplicados se saltan. |
-| **Sugerencias** | En Más, tarjeta con el correo de sugerencias y un botón que abre el correo del móvil con el mensaje preparado (no envía nada solo). Solo sale cuando `SUGGESTIONS_EMAIL` tiene valor. |
+| **Sugerencias** | En Más, tarjeta con el correo de sugerencias y un botón que abre el correo del móvil con el mensaje preparado (no envía nada solo). Correo configurado en `SUGGESTIONS_EMAIL`; si se vacía, la tarjeta y los botones desaparecen. |
 | **Más → Acerca de** | Atribución a Open Food Facts (ODbL) y aviso de que los objetivos son estimaciones. |
 | **Identidad y build** | Nombre "Contador de Calorías", paquete `com.fernando.contadorcalorias`, icono y pantalla de carga propios, `eas.json` con perfiles `preview` (móviles) y `preview-emulator`, `.easignore`. Expo SDK 58. |
 
@@ -43,12 +44,16 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 
 ### Siguiente en la lista
 
-Ver **"Pendiente y mejoras"**. Lo más inmediato: **poner el correo de sugerencias** en `app/src/constants/contact.ts` y probar una APK nueva (con el escáner, el teclado y el nuevo orden de resultados).
+Ver **"Pendiente y mejoras"**. Lo más inmediato: sacar una APK nueva con el correo de sugerencias (entra en la `v0.1.2`) junto con los arreglos pequeños de la lista.
 
 ## Estructura del repo
 
 ```
 calorie-tracker/
+├── .github/
+│   ├── workflows/ci.yml        # Comprobaciones en cada PR y subida a develop/main
+│   ├── workflows/release.yml   # Al subir un tag vX.Y.Z: compila la APK y crea la release en borrador
+│   └── pull_request_template.md
 ├── app/                        # La app del móvil (Expo)
 │   ├── src/app/                #   Pantallas (cada archivo es una pantalla/ruta)
 │   │   ├── _layout.tsx         #     Abre foods.db y monta las pestañas
@@ -81,10 +86,14 @@ calorie-tracker/
 │   │   ├── user.ts             #     user.db: diario, migraciones, totales
 │   │   ├── goals.ts            #     Guardar y leer los objetivos del usuario
 │   │   ├── custom-foods.ts     #     Alimentos propios (tabla custom_foods de user.db)
+│   │   ├── servings.ts         #     Raciones definidas por el usuario (tabla servings de user.db)
 │   │   ├── favorites.ts        #     Favoritos (tabla favorites de user.db)
 │   │   └── backup.ts           #     Construir la copia de seguridad e importarla
 │   ├── src/constants/contact.ts #  Correo de sugerencias (SUGGESTIONS_EMAIL) y apertura del correo
-│   ├── src/lib/                #   Funciones puras (sin Expo)
+│   ├── src/lib/                #   Funciones puras (sin Expo); tests en src/lib/__tests__/
+│   │   ├── serving.ts          #     Raciones: plural, "1,5 bolsitas", gramos y pasos del selector
+│   │   ├── food-key.ts         #     Clave de un alimento (origen + nombre + marca) para favoritos y raciones
+│   │   ├── ranking.ts          #     Parecido y bonus por marca/popularidad de los resultados
 │   │   ├── nutrition.ts        #     Fórmula de Mifflin-St Jeor y reparto de macros
 │   │   ├── validation.ts       #     Reglas del formato de datos (alimentos, diario, objetivos, copia)
 │   │   ├── barcode.ts          #     Limpiar y comparar códigos de barras (EAN-13 / UPC)
@@ -94,6 +103,10 @@ calorie-tracker/
 │   └── assets/db/foods.db      #   Base de alimentos (NO se sube a git; copiar desde pipeline)
 ├── pipeline/                   # Fábrica de datos: solo se ejecuta en el PC
 │   ├── 01_filter_off.py        #   Volcado de OFF -> data/productos_es.csv (solo España)
+│   ├── FOODS_DB_RELEASE        #   Nombre de la release de GitHub de la que el CI descarga foods.db
+│   ├── check_foods_db.py       #   Comprueba que un foods.db sirve para la app (local y CI)
+│   ├── test_brands.py, test_servings.py, test_build_db.py  # Tests del pipeline (python -m unittest)
+│   ├── servings.py             #   En qué alimentos tiene sentido una ración (categorías y palabras, editable)
 │   ├── brands.py               #   Lista editable de supermercados y marcas conocidas (orden de prioridad)
 │   ├── 02_build_db.py          #   Limpia, deduplica y genera data/foods.db
 │   ├── data-to-sqlite.py       #   Análisis exploratorio del CSV y esquema de la BD
@@ -109,6 +122,9 @@ calorie-tracker/
 | Cambiar qué alimentos entran en la base | `pipeline/02_build_db.py` (reglas de limpieza al principio del archivo) |
 | Cambiar las columnas de la base de alimentos | `pipeline/02_build_db.py` (`SCHEMA`) y `app/src/db/search.ts` (tipo `Food` y consulta) |
 | Cambiar cómo se busca o se ordena | `app/src/db/search.ts` (pesos `BONUS_*` arriba del todo) |
+| Ver o cambiar las comprobaciones automáticas | `.github/workflows/ci.yml` |
+| Cambiar cómo se compila y publica una versión | `.github/workflows/release.yml` |
+| Cambiar en qué alimentos sale la ración automática | `pipeline/servings.py` (listas de categorías y palabras), luego regenerar `foods.db` |
 | Cambiar qué supermercados o marcas salen primero, o su orden | `pipeline/brands.py`, luego regenerar `foods.db` |
 | Cambiar la pantalla de búsqueda | `app/src/app/explore.tsx` |
 | Cambiar la pantalla del día | `app/src/app/index.tsx` |
@@ -164,6 +180,7 @@ Ejecuta lint y typecheck antes de dar una tarea por terminada. (`expo lint` da h
 
 - **`foods.db`** (solo lectura, viene empaquetada en la app): tabla `foods` con los valores **por 100 g** y `foods_fts`, el índice de búsqueda. Los datos que no existen se dejan como `NULL`, no como 0.
 - **`user.db`** (se crea en el móvil): tabla `entries` con lo que comes. Cada registro guarda los nutrientes ya calculados para los gramos tomados, así el histórico no cambia aunque cambie `foods.db`.
+- **Raciones:** dos fuentes, y la del usuario manda. (1) `foods.serving_g`, que el pipeline rellena **solo** si el producto trae ración en Open Food Facts **y** está en una categoría donde tiene sentido (`servings.py`); se descartan los "100 g" (casi siempre un valor por defecto) y los paquetes enteros en cosas pequeñas. (2) La tabla `servings` de `user.db`, con la ración que el usuario define para cualquier alimento, identificado por origen + nombre + marca (la misma clave que los favoritos, así que no depende de los ids de `foods.db`). Entra en la copia de seguridad (campo opcional `servings`).
 - **Alimentos propios:** tabla `custom_foods` en `user.db` (nunca en `foods.db`, que es de solo lectura y se reemplaza al actualizar). Cada registro del diario guarda su propia copia de los valores, así que borrar o editar un alimento propio no cambia días pasados.
 - **Favoritos y recientes:** los favoritos se guardan en `user.db` (tabla `favorites`) con una copia de sus valores por 100 g, igual que los registros. Los recientes no tienen tabla: se calculan a partir del diario (último registro de cada alimento) y sus valores por 100 g se deducen de ese registro.
 - **Copia de seguridad:** JSON con `app`, `format_version`, `custom_foods`, `favorites` (opcional, las copias antiguas no lo traen), `entries` y `goals`. Al importar se valida todo (mismas reglas que el pipeline: por 100 g, kcal 0–900, macros ≤ 100 g, nombres de 3 a 100 letras, fechas reales, franjas válidas); si algo falla no se importa nada. Los duplicados se saltan.
@@ -198,15 +215,23 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
 - [ ] **Licencia del código:** `app/LICENSE` es la MIT de la plantilla de Expo (con el copyright de Expo). Sustituirla por una propia y añadir un `LICENSE` en la raíz.
 - [ ] **Licencia de los datos (ODbL):** publicar `foods.db` (o el modo de generarlo) en abierto y enlazarlo desde "Más → Acerca de". Hay que hacerlo si se distribuye la app.
 - [ ] **Ampliar `pipeline/brands.py`**: la lista de marcas conocidas es corta (~100) y hecha a mano; revisar qué marcas faltan o están mal asignadas.
-- [ ] **Poner el correo de sugerencias** en `app/src/constants/contact.ts` (`SUGGESTIONS_EMAIL`, hoy vacío). Mientras esté vacío, ni la tarjeta de Más ni el botón del escáner se muestran.
+- [ ] **Activar el CI/CD** (una sola vez): crear el secreto `EXPO_TOKEN`, publicar la release de `foods.db` y probar el workflow con `dry_run`. Pasos en "CI/CD (GitHub Actions)".
+- [ ] **Comprobar el correo de sugerencias en una APK** (`SUGGESTIONS_EMAIL` ya está puesto): la tarjeta sale en Más, el botón "Enviar sugerencia" abre el correo del móvil con el asunto y el pie con versión y móvil, y "Sugerir que lo añadamos" sale al escanear un código desconocido. Sin una app de correo configurada debe salir el aviso con la dirección.
 - [ ] **Datos incompletos:** en el total del día, avisar cuando algún alimento tenga fibra, azúcares o sal en `NULL` (hoy se suman como 0 sin decir nada).
 - [ ] **Probar en más dispositivos** (otras versiones de Android, pantallas pequeñas, modo oscuro, texto grande).
+
+### 🐞 Fallos pequeños por corregir
+
+- [ ] **La ventana de añadir un alimento enseña una barrita arriba** (el "tirador") que parece indicar que se puede arrastrar hacia abajo para cerrarla, pero **no se puede**. Hay dos soluciones: que se pueda (cerrar al deslizar hacia abajo) o quitar la barrita. Afecta a todas las ventanas inferiores, que comparten `components/bottom-sheet-modal.tsx`: añadir alimento, editar registro, copiar de otro día, "No lo encontramos" del escáner. Hoy solo se cierran tocando fuera o con el botón atrás.
+- [ ] **Los gramos al añadir no tienen límite, pero la copia de seguridad sí** (0,1 a 10 000 g). `components/add-food-modal.tsx` acepta cualquier número mayor que 0, así que alguien puede registrar 50 000 g o 0,05 g y luego **exportar una copia que él mismo no podría importar**. Hay que usar el mismo rango (`LIMITS.GRAMS_MAX` de `lib/validation.ts`) que ya usa la ventana de editar.
+- [ ] **Hoy puede quedarse en el día anterior** si la app se deja abierta en segundo plano toda la noche: la fecha no se recalcula hasta que algo vuelve a dibujar la pantalla. Es probable y fácil de ver (abrir la app por la mañana y mirar la fecha); no se ha comprobado.
 
 ### 🟡 Funcionalidad
 
 - [ ] **Genéricos de BEDCA** (pollo, arroz, lentejas…): hoy salen solo productos de marca (con el nuevo orden, los de supermercado primero). Revisar antes licencia y acceso. Rama `feature/bedca-import`.
 - [ ] **Recetas:** alimento compuesto cuyos valores por 100 g se calculan desde los ingredientes. Rama `feature/recetas`.
-- [ ] **Porciones y unidades** ("1 yogur", "1 cucharada") además de gramos.
+- [ ] **Raciones con nombre para alimentos genéricos** ("1 huevo", "1 cucharada", "1 loncha"): hecho el mecanismo (palabra y gramos a elegir por el usuario) y las raciones de Open Food Facts donde tienen sentido (3 % de la base). Falta precargarlas para genéricos, que dependen de tener esos alimentos (BEDCA o un pack revisado a mano).
+- [ ] **Revisar la lista de `pipeline/servings.py`** con uso real: hoy cubre el 2-3 % de la base (yogures, galletas, barritas, pizzas, platos preparados, arroz de bolsita) y habrá categorías que falten o sobren. Es una lista editable; tras cambiarla hay que regenerar `foods.db`.
 - [ ] **Mostrar fibra, azúcares y sal** en la interfaz (ya se guardan).
 - [ ] **Escáner: consulta opcional a Open Food Facts** para traer productos que no están en `foods.db`. Se decidió **no hacerlo por ahora** para mantener la app 100 % offline (el escáner solo mira la base y los alimentos propios). Si algún día se hace: sería opcional y con aviso, y habría que declararlo en la política de privacidad y en Play Store.
 - [ ] **Escáner: códigos UPC-E** (8 dígitos comprimidos) no se expanden a 12 dígitos, así que no coincidirían con `foods.db`. Poco habitual en España.
@@ -227,10 +252,9 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
 - [ ] **Calidad de `foods.db`:** unir duplicados casi iguales ("Jamon serrano" y "jamón serrano", "Milbona,Lidl" y "Lidl, Milbona"), y decidir qué hacer con unos 12 000 productos cuyas kcal no cuadran con sus macros.
 - [ ] **Versión de `foods.db` automática:** hoy hay que cambiar `FOODS_DB_NAME` en `_layout.tsx` (ahora `foods-2.db`) a mano al regenerar la base.
 - [ ] **Fecha del volcado de Open Food Facts** usado: dejarla anotada para que el resultado sea reproducible.
-- [ ] **Tests** de `lib/validation.ts`, `lib/nutrition.ts` y de los cálculos de `db/user.ts` (hoy se comprobaron a mano).
+- [ ] **Más tests:** ya hay tests de `lib/` (validación, objetivos, fechas, ranking, códigos de barras) y del pipeline; faltan los cálculos de `db/user.ts` (editar registros, recientes, copiar día), que dependen de SQLite y hoy solo se han comprobado a mano.
 - [ ] **Manejo de errores** en consultas y estados de carga (hoy un fallo de SQLite podría dejar la pantalla en blanco).
 - [ ] **Accesibilidad:** etiquetas para lectores de pantalla, contraste y tamaños de fuente.
-- [ ] **Integración continua:** GitHub Actions que ejecute `npx tsc --noEmit` y `npx expo lint` en cada Pull Request.
 - [ ] **Limpiar la plantilla de Expo:** borrar los archivos que ya no se usan (`animated-icon.*`, `external-link.tsx`, `hint-row.tsx`, `web-badge.tsx`, `ui/collapsible.tsx`, `expo-logo.png`, `react-logo*.png`, `expo-badge*.png`, `logo-glow.png`, `tutorial-web.png`, `assets/expo.icon/`, `tabIcons/` y `scripts/reset-project.js`) y el error de lint de `use-color-scheme.web.ts`.
 - [ ] **Alinear colores:** el verde del icono (lima `#70E83D`) y el de la app (`#2E9E6B`) no coinciden. Unificarlos en `constants/theme.ts` o regenerar el icono.
 - [ ] **`pipeline/requirements.txt`** no coincide con lo que realmente usa el pipeline (`duckdb`, `pandas`); regenerarlo desde un entorno limpio.
@@ -272,6 +296,7 @@ Por eso, antes de dar un fallo por arreglado hay que probarlo en una APK. Lista 
 - [ ] Hoy → "Copiar de otro día": elige día y franjas, y se copian al día actual.
 - [ ] **Franja pegada:** en Hoy, + de Desayuno → añadir algo → ir a Hoy y abrir Buscar desde la barra de abajo: ya no debe decir "Añadiendo a Desayuno" ni preseleccionarlo. Si vuelves a pulsar el + de otra franja, sí debe usarla.
 - [ ] Escáner (📷 en Buscar): pide permiso de cámara la primera vez; un producto conocido (p. ej. algo de Hacendado) abre directamente la ventana de añadir; un código inventado muestra "No lo encontramos" con las opciones; "Crear este alimento" abre el formulario con el código ya puesto y, al guardar, se abre para añadirlo; con la luz apagada, el botón 🔦 enciende el flash. Al escanear de nuevo ese código, ya sale el alimento creado.
+- [ ] Raciones: (a) buscar un yogur o unas galletas de supermercado: al abrirlos sale el selector "Raciones" con "indicada por el fabricante", y − / + cambian los gramos de media en media; (b) buscar unos cereales o un aceite: **no** sale selector, solo "Definir mi ración (opcional)"; (c) en un alimento cualquiera, "Definir mi ración" con 125 g y "bolsita": el selector pasa a decir "1 bolsita = 125 g" y "1,5 bolsitas"; (d) cerrar y volver a abrirlo, y también desde Recientes y Favoritos: la ración sigue ahí; (e) "Cambiar mi ración" y "Quitar mi ración" (si había una del fabricante, vuelve a esa); (f) crear un alimento propio con ración en el formulario y renombrarlo después; (g) exportar e importar la copia: las raciones se conservan; (h) escribir los gramos a mano y comprobar que la ración no pisa lo escrito.
 - [ ] Todo lo anterior en modo oscuro y con el texto del sistema en tamaño grande.
 
 Cuando haya varios arreglos pendientes, genera una sola APK `preview` para probarlos juntos (los builds gratuitos son limitados).
@@ -313,6 +338,48 @@ La primera vez pregunta si crear el proyecto en tu cuenta de Expo y si generar l
 - Que anoten qué hacían cuando algo falla (y si es posible, una captura).
 - Los objetivos son estimaciones, no consejo médico.
 
+## CI/CD (GitHub Actions)
+
+Dos workflows en `.github/workflows/`. Están pensados para este proyecto: un solo desarrollador, builds de EAS limitadas, y una base de alimentos que **no está en git**.
+
+### CI — `ci.yml` (automático)
+Se ejecuta en cada Pull Request a `develop` o `main` y en cada subida a esas ramas. Tres trabajos:
+
+| Trabajo | Qué comprueba |
+|---|---|
+| **App** | `tsc` (tipos), `expo lint`, **41 tests** de validación, objetivos, fechas, códigos de barras y orden de resultados, y `expo-doctor` (solo avisa, no bloquea) |
+| **Pipeline** | **18 tests** de Python: lista de supermercados, limpieza y deduplicado, y que el esquema de `foods.db` tiene las columnas que lee la app |
+| **Repositorio** | Las dos copias de `.easignore` son idénticas; `app.json` y `package.json` tienen la misma versión; no se ha colado en git ninguna base de datos, CSV, APK o clave |
+
+En la PR ves una marca verde ✓ o roja ✗. Si algo falla, el detalle está en la pestaña **Actions**.
+
+### CD — `release.yml` (al poner un tag)
+Al subir un tag `vX.Y.Z`:
+1. Ejecuta el CI entero. Si falla, **no compila nada** (y no gasta una build).
+2. Comprueba que el tag coincide con la versión de `app.json` (el tag `v0.1.2` exige `version: 0.1.2`).
+3. Descarga `foods.db` de la release indicada en `pipeline/FOODS_DB_RELEASE` y la valida con `pipeline/check_foods_db.py`.
+4. Compila la APK con EAS Build (perfil `preview`).
+5. Crea una **release en borrador y pre-release** con la APK ya renombrada (`contador-calorias-vX.Y.Z.apk`) y las notas generadas. La pruebas y, si va bien, pulsas **Publish**.
+
+También se puede lanzar a mano (**Actions → Release (APK) → Run workflow**), eligiendo perfil. Con **`dry_run` activado** solo hace las comprobaciones y **no gasta ninguna build**: es la forma de probar que todo está bien configurado.
+
+### Por qué `foods.db` va como release
+`foods.db` pesa 28 MB, cambia con cada regeneración y está en `.gitignore`, así que el CI no la tendría. La solución es subirla como archivo de una **release de GitHub** y que el CI la descargue. Así además: cada build usa exactamente la base publicada (reproducible), y se cumple la obligación de la licencia ODbL de ofrecer abiertamente la base derivada de Open Food Facts.
+
+### Configuración (una sola vez)
+1. **Secreto `EXPO_TOKEN`.** En <https://expo.dev> → tu cuenta → **Access tokens** → crear uno. En GitHub → **Settings → Secrets and variables → Actions → New repository secret** → nombre `EXPO_TOKEN`, valor el token.
+2. **Publicar `foods.db`.** En GitHub → **Releases → Draft a new release**: tag nuevo `foods-db-2026-10` (el mismo nombre que `pipeline/FOODS_DB_RELEASE`), título "foods.db (volcado de Open Food Facts, octubre 2026)", adjunta `app/assets/db/foods.db` y marca **pre-release** (así no le quita el "Latest" a las versiones de la app). Pon en las notas la fecha del volcado y la licencia: *"Base de datos derivada de Open Food Facts, licencia ODbL"*.
+3. **Probar sin gastar build:** **Actions → Release (APK) → Run workflow** con `dry_run` activado. Debe terminar en verde y el resumen dirá "Comprobación correcta ✓".
+
+### La release actual de `foods.db`
+`pipeline/FOODS_DB_RELEASE` apunta ahora a **`foods-db-2026-11`**, la base con raciones y `serving_g` (la `foods-db-2026-10` no la tiene, y `check_foods_db.py` la rechazaría). **Hay que publicar esa release antes de poner un tag**: tag `foods-db-2026-11`, pre-release, con `app/assets/db/foods.db` adjunto.
+
+### Cuando cambies la base de alimentos
+Regenerar con el pipeline → `python3 pipeline/check_foods_db.py pipeline/data/foods.db` → crear una release nueva (`foods-db-AAAA-MM`) con el archivo → cambiar `pipeline/FOODS_DB_RELEASE` → cambiar `FOODS_DB_NAME` en `app/src/app/_layout.tsx` (para que los móviles copien la nueva).
+
+### Lo que NO se ha podido probar
+Los tests, el lint y los tipos se ejecutaron en local con las mismas órdenes que usa el CI, y los dos archivos pasan `actionlint`. Pero **el paso de EAS Build no se ha ejecutado nunca desde GitHub**: la salida `--json` de `eas build` no está documentada y el workflow busca el enlace de la APK de forma tolerante, pero si algo no cuadra, el fallo saldrá la primera vez que se use y el log mostrará la respuesta de EAS. Si pasa, se corrige ese paso; el resto no se ve afectado. Hasta que lo veas funcionar una vez, la forma manual de la receta de abajo sigue siendo válida.
+
 ## Versiones, ramas y releases
 
 ### Ramas
@@ -352,6 +419,8 @@ La versión sigue **MAYOR.MENOR.PARCHE**:
 > Esa APK se generó con la versión interna `1.0.0` (versionCode 1), antes de adoptar este esquema. Es la misma app que `v0.1.0`. Desde el siguiente build la versión interna coincide con el tag.
 
 ### Cómo sacar una versión (receta)
+
+**Con CI/CD configurado** (lo más corto): subir `version` (paso 2), fusionar `develop` en `main` (paso 3) y **poner el tag**; el workflow compila y deja la release en borrador con la APK. Los pasos 4 y 5 de abajo son la forma manual.
 
 1. Asegúrate de que todo está fusionado en `develop` y probado.
 2. En `develop`: sube `version` en `app/app.json` y `app/package.json` (por ejemplo `0.1.1`) y añade una fila al historial de arriba. Commit: `chore: version 0.1.1`.

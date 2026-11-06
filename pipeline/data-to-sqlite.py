@@ -27,6 +27,7 @@ Ejecutar desde la carpeta pipeline/.
 # │ search_text│ TEXT NOT NULL       │ nombre + marca, minúsculas y sin tildes     │
 # │ brand_rank │ INTEGER             │ prioridad: supermercado / marca conocida    │
 # │ scans      │ INTEGER NOT NULL    │ escaneos en Open Food Facts (popularidad)   │
+# │ serving_g  │ REAL                │ ración en g, solo donde tiene sentido       │
 # └───────────┴──────────────────────┴─────────────────────────────────────────────┘
 #
 # Tabla foods_fts (índice de búsqueda de texto, FTS5)
@@ -49,7 +50,8 @@ CREATE TABLE foods (
     salt     REAL,
     search_text TEXT NOT NULL,
     brand_rank INTEGER,
-    scans INTEGER NOT NULL DEFAULT 0
+    scans INTEGER NOT NULL DEFAULT 0,
+    serving_g REAL
 );
 
 CREATE VIRTUAL TABLE foods_fts USING fts5(

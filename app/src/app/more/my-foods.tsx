@@ -9,12 +9,16 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { deleteCustomFood, listCustomFoods, type CustomFood } from '@/db/custom-foods';
+import { listUserServings, type Serving } from '@/db/servings';
+import { foodKey } from '@/lib/food-key';
 
 export default function MyFoodsScreen() {
   const [foods, setFoods] = useState<CustomFood[]>([]);
+  const [servings, setServings] = useState<Map<string, Serving>>(new Map());
 
   const load = useCallback(() => {
     listCustomFoods().then(setFoods);
+    listUserServings().then(setServings);
   }, []);
   useFocusEffect(load);
 
@@ -69,6 +73,12 @@ export default function MyFoodsScreen() {
               <ThemedText type="smallBold">{item.kcal} kcal</ThemedText>
             </View>
             <MacroPills protein={item.protein} carbs={item.carbs} fat={item.fat} />
+            {servings.get(foodKey({ source: 'custom', name: item.name, brand: item.brand })) ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                1 {servings.get(foodKey({ source: 'custom', name: item.name, brand: item.brand }))?.label || 'ración'} ={' '}
+                {servings.get(foodKey({ source: 'custom', name: item.name, brand: item.brand }))?.grams} g
+              </ThemedText>
+            ) : null}
             <View style={styles.actions}>
               <Pressable
                 onPress={() => router.push({ pathname: '/more/food-form', params: { id: String(item.id) } })}>

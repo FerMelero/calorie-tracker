@@ -1,6 +1,7 @@
 import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
 
 import type { Food } from '@/db/search';
+import { foodKey } from '@/lib/food-key';
 import type { MealKey } from '@/lib/validation';
 
 export type { MealKey };
@@ -38,7 +39,7 @@ export type Entry = {
   salt: number | null;
 };
 
-const USER_DB_VERSION = 5;
+const USER_DB_VERSION = 7;
 
 let db: SQLiteDatabase | null = null;
 
@@ -140,6 +141,33 @@ function migrate(database: SQLiteDatabase) {
   if (current < 5) {
     // Código de barras de los alimentos propios (para encontrarlos al escanear)
     database.execSync('ALTER TABLE custom_foods ADD COLUMN barcode TEXT;');
+  }
+  if (current < 6) {
+    // Ración opcional de los alimentos propios, en gramos (para el botón "1 ración" al añadirlos)
+    database.execSync('ALTER TABLE custom_foods ADD COLUMN serving_g REAL;');
+  }
+  if (current < 7) {
+    database.execSync(`
+      -- Raciones que define el usuario, para cualquier alimento (se identifica por origen, nombre y marca)
+      CREATE TABLE servings (
+        key    TEXT PRIMARY KEY,
+        source TEXT NOT NULL,
+        name   TEXT NOT NULL,
+        brand  TEXT,
+        grams  REAL NOT NULL,
+        label  TEXT
+      );
+    `);
+    // La versión 6 guardaba la ración dentro de custom_foods.serving_g: pasa a la tabla común
+    const old = database.getAllSync<{ name: string; brand: string | null; serving_g: number }>(
+      'SELECT name, brand, serving_g FROM custom_foods WHERE serving_g IS NOT NULL',
+    );
+    for (const r of old) {
+      database.runSync(
+        "INSERT OR IGNORE INTO servings (key, source, name, brand, grams, label) VALUES (?, 'custom', ?, ?, ?, NULL)",
+        [foodKey({ source: 'custom', name: r.name, brand: r.brand }), r.name, r.brand, r.serving_g],
+      );
+    }
   }
   database.execSync(`PRAGMA user_version = ${USER_DB_VERSION}`);
 }

@@ -9,6 +9,7 @@
 
 import { cleanBarcode } from '@/lib/barcode';
 import { isValidISODate } from '@/lib/dates';
+import { parseNumber } from '@/lib/nutrition';
 import { MAX_LABEL_LENGTH } from '@/lib/serving';
 
 export const MEAL_KEYS = ['desayuno', 'comida', 'snacks', 'merienda', 'cena'] as const;
@@ -101,6 +102,19 @@ export type Backup = {
   entries: EntryInput[];
   goals: GoalsInput | null;
 };
+
+/** Gramos mínimo y máximo de un registro del diario (el mismo rango que exige la copia de seguridad). */
+export const GRAMS_RANGE = { min: 0.1, max: LIMITS.GRAMS_MAX } as const;
+
+/**
+ * Lee los gramos que escribe el usuario (acepta coma decimal). Devuelve null si no es un número o
+ * si queda fuera de 0,1 a 10 000 g. Lo usan las ventanas de añadir y de editar, para que nunca se
+ * pueda guardar algo que la copia de seguridad luego rechazaría.
+ */
+export function parseGrams(text: string): number | null {
+  const value = parseNumber(text);
+  return value !== null && value >= GRAMS_RANGE.min && value <= GRAMS_RANGE.max ? value : null;
+}
 
 export type ValidationResult<T> = { ok: true; data: T } | { ok: false; errors: string[] };
 
@@ -228,7 +242,7 @@ export function validateServing(raw: unknown, path = 'racion'): ValidationResult
   const source = readEnum(raw.source, `${path}.source`, ['db', 'custom'] as const, errors);
   const name = readText(raw.name, `${path}.name`, 1, LIMITS.NAME_MAX, errors);
   const brand = readOptionalText(raw.brand, `${path}.brand`, LIMITS.BRAND_MAX, errors);
-  const grams = readNumber(raw.grams, `${path}.grams`, 0.1, LIMITS.GRAMS_MAX, errors);
+  const grams = readNumber(raw.grams, `${path}.grams`, GRAMS_RANGE.min, GRAMS_RANGE.max, errors);
   const label = readOptionalText(raw.label, `${path}.label`, MAX_LABEL_LENGTH, errors);
 
   if (errors.length > 0 || source === null || name === null || grams === null) return { ok: false, errors };

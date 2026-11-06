@@ -22,7 +22,7 @@ import {
   MAX_LABEL_LENGTH,
   stepCount,
 } from '@/lib/serving';
-import { LIMITS } from '@/lib/validation';
+import { GRAMS_RANGE, parseGrams } from '@/lib/validation';
 
 type Props = {
   food: Food | null;
@@ -71,8 +71,11 @@ export function AddFoodModal({ food, defaultMeal, defaultGrams, date, onClose }:
     };
   }, [db, food, defaultGrams]);
 
-  const grams = Number(gramsText.replace(',', '.'));
-  const valid = Number.isFinite(grams) && grams > 0;
+  const parsed = parseGrams(gramsText);
+  const valid = parsed !== null;
+  const grams = parsed ?? Number.NaN;
+  // Solo se avisa si ha escrito algo: un campo vacío no es un error, solo no deja añadir todavía
+  const rangeError = !valid && gramsText.trim() !== '' ? `Entre ${formatNumber(GRAMS_RANGE.min)} y ${GRAMS_RANGE.max} gramos.` : null;
 
   function changeGrams(text: string) {
     touched.current = true;
@@ -82,7 +85,9 @@ export function AddFoodModal({ food, defaultMeal, defaultGrams, date, onClose }:
   function step(direction: 1 | -1) {
     if (!serving) return;
     const current = valid ? countFromGrams(grams, serving.grams) : 1;
-    changeGrams(String(gramsFromCount(stepCount(current, direction), serving.grams)));
+    // Con raciones muy grandes el selector no puede pasar del máximo permitido
+    const next = Math.min(GRAMS_RANGE.max, gramsFromCount(stepCount(current, direction), serving.grams));
+    changeGrams(String(next));
   }
 
   function openEditor() {
@@ -95,8 +100,8 @@ export function AddFoodModal({ food, defaultMeal, defaultGrams, date, onClose }:
   async function saveServing() {
     if (!food) return;
     const value = parseNumber(editGrams);
-    if (value === null || value < 0.1 || value > LIMITS.GRAMS_MAX) {
-      setEditError(`Escribe los gramos de una ración (entre 0,1 y ${LIMITS.GRAMS_MAX}).`);
+    if (value === null || value < GRAMS_RANGE.min || value > GRAMS_RANGE.max) {
+      setEditError(`Escribe los gramos de una ración (entre ${formatNumber(GRAMS_RANGE.min)} y ${GRAMS_RANGE.max}).`);
       return;
     }
     const label = editLabel.trim() || null;
@@ -203,6 +208,11 @@ export function AddFoodModal({ food, defaultMeal, defaultGrams, date, onClose }:
         keyboardType="decimal-pad"
         style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
       />
+      {rangeError ? (
+        <ThemedText type="small" style={styles.error}>
+          {rangeError}
+        </ThemedText>
+      ) : null}
 
       <View style={styles.buttonRow}>
         <Button label="Añadir a mi día" onPress={add} disabled={!valid || editing} />

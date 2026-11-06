@@ -9,8 +9,8 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { MEALS, updateEntry, type Entry, type MealKey } from '@/db/user';
 import { useTheme } from '@/hooks/use-theme';
-import { parseNumber } from '@/lib/nutrition';
-import { LIMITS } from '@/lib/validation';
+import { formatNumber } from '@/lib/serving';
+import { GRAMS_RANGE, parseGrams } from '@/lib/validation';
 
 type Props = {
   entry: Entry | null;
@@ -27,8 +27,9 @@ export function EditEntryModal({ entry, onClose, onSaved }: Props) {
   const [meal, setMeal] = useState<MealKey>(entry?.meal ?? 'desayuno');
   const [gramsText, setGramsText] = useState(entry ? String(entry.grams) : '');
 
-  const grams = parseNumber(gramsText);
-  const valid = grams !== null && grams >= 0.1 && grams <= LIMITS.GRAMS_MAX;
+  const grams = parseGrams(gramsText);
+  const valid = grams !== null;
+  const rangeError = !valid && gramsText.trim() !== '' ? `Entre ${formatNumber(GRAMS_RANGE.min)} y ${GRAMS_RANGE.max} gramos.` : null;
 
   async function save() {
     if (!entry || !valid) return;
@@ -73,6 +74,11 @@ export function EditEntryModal({ entry, onClose, onSaved }: Props) {
           keyboardType="decimal-pad"
           style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
         />
+        {rangeError ? (
+          <ThemedText type="small" style={styles.error}>
+            {rangeError}
+          </ThemedText>
+        ) : null}
 
         <View style={styles.buttonRow}>
           <Button label="Guardar cambios" onPress={save} disabled={!valid} />
@@ -86,5 +92,6 @@ const styles = StyleSheet.create({
   preview: { borderRadius: 14, padding: Spacing.three, gap: Spacing.one, marginVertical: Spacing.one },
   previewKcal: { fontSize: 24, lineHeight: 30, fontWeight: 700 },
   input: { borderRadius: 14, padding: Spacing.three, fontSize: 16 },
+  error: { color: '#E5484D' },
   buttonRow: { marginTop: Spacing.two },
 });

@@ -222,8 +222,6 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
 
 ### 🐞 Fallos pequeños por corregir
 
-- [ ] **La ventana de añadir un alimento enseña una barrita arriba** (el "tirador") que parece indicar que se puede arrastrar hacia abajo para cerrarla, pero **no se puede**. Hay dos soluciones: que se pueda (cerrar al deslizar hacia abajo) o quitar la barrita. Afecta a todas las ventanas inferiores, que comparten `components/bottom-sheet-modal.tsx`: añadir alimento, editar registro, copiar de otro día, "No lo encontramos" del escáner. Hoy solo se cierran tocando fuera o con el botón atrás.
-- [ ] **Los gramos al añadir no tienen límite, pero la copia de seguridad sí** (0,1 a 10 000 g). `components/add-food-modal.tsx` acepta cualquier número mayor que 0, así que alguien puede registrar 50 000 g o 0,05 g y luego **exportar una copia que él mismo no podría importar**. Hay que usar el mismo rango (`LIMITS.GRAMS_MAX` de `lib/validation.ts`) que ya usa la ventana de editar.
 - [ ] **Hoy puede quedarse en el día anterior** si la app se deja abierta en segundo plano toda la noche: la fecha no se recalcula hasta que algo vuelve a dibujar la pantalla. Es probable y fácil de ver (abrir la app por la mañana y mirar la fecha); no se ha comprobado.
 
 ### 🟡 Funcionalidad
@@ -297,6 +295,8 @@ Por eso, antes de dar un fallo por arreglado hay que probarlo en una APK. Lista 
 - [ ] **Franja pegada:** en Hoy, + de Desayuno → añadir algo → ir a Hoy y abrir Buscar desde la barra de abajo: ya no debe decir "Añadiendo a Desayuno" ni preseleccionarlo. Si vuelves a pulsar el + de otra franja, sí debe usarla.
 - [ ] Escáner (📷 en Buscar): pide permiso de cámara la primera vez; un producto conocido (p. ej. algo de Hacendado) abre directamente la ventana de añadir; un código inventado muestra "No lo encontramos" con las opciones; "Crear este alimento" abre el formulario con el código ya puesto y, al guardar, se abre para añadirlo; con la luz apagada, el botón 🔦 enciende el flash. Al escanear de nuevo ese código, ya sale el alimento creado.
 - [ ] Raciones: (a) buscar un yogur o unas galletas de supermercado: al abrirlos sale el selector "Raciones" con "indicada por el fabricante", y − / + cambian los gramos de media en media; (b) buscar unos cereales o un aceite: **no** sale selector, solo "Definir mi ración (opcional)"; (c) en un alimento cualquiera, "Definir mi ración" con 125 g y "bolsita": el selector pasa a decir "1 bolsita = 125 g" y "1,5 bolsitas"; (d) cerrar y volver a abrirlo, y también desde Recientes y Favoritos: la ración sigue ahí; (e) "Cambiar mi ración" y "Quitar mi ración" (si había una del fabricante, vuelve a esa); (f) crear un alimento propio con ración en el formulario y renombrarlo después; (g) exportar e importar la copia: las raciones se conservan; (h) escribir los gramos a mano y comprobar que la ración no pisa lo escrito.
+- [ ] **Barrita de las ventanas inferiores** (añadir, editar, copiar de otro día, "No lo encontramos"): al arrastrarla hacia abajo la ventana sigue al dedo; si se suelta pasado ~120 puntos, o con un lanzamiento rápido, se cierra; si se suelta antes, vuelve a su sitio. Tocar fuera y el botón atrás siguen cerrándola. Con el teclado abierto, también se puede cerrar arrastrando. Al abrir la misma ventana otra vez, aparece entera (no se queda fuera de pantalla).
+- [ ] **Límite de gramos:** al añadir o editar, escribir 50000 o 0,05 muestra "Entre 0,1 y 10000 gramos." y no deja añadir; 10000 y 0,1 sí. Con una ración muy grande, el botón + no pasa de 10 000 g. Exportar una copia con cantidades extremas (10000, 0,1) e importarla: se acepta.
 - [ ] Todo lo anterior en modo oscuro y con el texto del sistema en tamaño grande.
 
 Cuando haya varios arreglos pendientes, genera una sola APK `preview` para probarlos juntos (los builds gratuitos son limitados).
@@ -347,8 +347,8 @@ Se ejecuta en cada Pull Request a `develop` o `main` y en cada subida a esas ram
 
 | Trabajo | Qué comprueba |
 |---|---|
-| **App** | `tsc` (tipos), `expo lint`, **41 tests** de validación, objetivos, fechas, códigos de barras y orden de resultados, y `expo-doctor` (solo avisa, no bloquea) |
-| **Pipeline** | **18 tests** de Python: lista de supermercados, limpieza y deduplicado, y que el esquema de `foods.db` tiene las columnas que lee la app |
+| **App** | `tsc` (tipos), `expo lint`, **tests** de validación, objetivos, fechas, códigos de barras, raciones, orden de resultados y arrastre de ventanas, y `expo-doctor` (solo avisa, no bloquea) |
+| **Pipeline** | **tests** de Python: lista de supermercados, raciones con sentido, limpieza y deduplicado, y que el esquema de `foods.db` tiene las columnas que lee la app |
 | **Repositorio** | Las dos copias de `.easignore` son idénticas; `app.json` y `package.json` tienen la misma versión; no se ha colado en git ninguna base de datos, CSV, APK o clave |
 
 En la PR ves una marca verde ✓ o roja ✗. Si algo falla, el detalle está en la pestaña **Actions**.

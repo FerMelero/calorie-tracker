@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { calculateBmr, calculateGoals, parseNumber, type CalcInput } from '@/lib/nutrition';
+import {
+  calculateBmr,
+  calculateGoals,
+  goalsOutdated,
+  parseNumber,
+  recalculateWithWeight,
+  WEIGHT_DRIFT_KG,
+  type CalcInput,
+  type StoredProfile,
+} from '@/lib/nutrition';
 
 const base: CalcInput = {
   sex: 'male', age: 30, weightKg: 80, heightCm: 180, activity: 'moderate',
@@ -49,5 +58,49 @@ describe('parseNumber', () => {
     expect(parseNumber(' 80 ')).toBe(80);
     expect(parseNumber('')).toBeNull();
     expect(parseNumber('abc')).toBeNull();
+  });
+});
+
+describe('recalcular los objetivos con un peso nuevo', () => {
+  // Lo que guarda la tabla goals tras calcular con el ejemplo de siempre (80 kg, déficit del 20 %)
+  const perfil: StoredProfile = {
+    sex: 'male', age: 30, weight_kg: 80, height_cm: 180, activity: 'moderate', objective: 'lose',
+    adjust_pct: 20, protein_per_kg: 1.8, fat_pct: 25,
+  };
+
+  it('con el mismo peso da exactamente lo mismo que el cálculo original', () => {
+    expect(recalculateWithWeight(perfil, 80)).toEqual(calculateGoals(base));
+  });
+
+  it('con menos peso, bajan las calorías y la proteína (que va por kilo)', () => {
+    const antes = recalculateWithWeight(perfil, 80)!;
+    const despues = recalculateWithWeight(perfil, 75)!;
+    expect(despues.kcal).toBeLessThan(antes.kcal);
+    expect(despues.protein).toBe(135); // 1,8 x 75
+    expect(despues.protein).toBeLessThan(antes.protein);
+  });
+
+  it('mantenimiento no aplica ajuste aunque guarde un porcentaje', () => {
+    const r = recalculateWithWeight({ ...perfil, objective: 'maintain', adjust_pct: 0 }, 80)!;
+    expect(r.kcal).toBe(r.tdee);
+  });
+
+  it('si faltan datos (objetivos manuales) no se puede recalcular', () => {
+    expect(recalculateWithWeight({ ...perfil, sex: null }, 80)).toBeNull();
+    expect(recalculateWithWeight({ ...perfil, age: null }, 80)).toBeNull();
+    expect(recalculateWithWeight({ ...perfil, height_cm: null }, 80)).toBeNull();
+    expect(recalculateWithWeight({ ...perfil, activity: null }, 80)).toBeNull();
+    expect(recalculateWithWeight({ ...perfil, objective: null }, 80)).toBeNull();
+    expect(recalculateWithWeight({ ...perfil, protein_per_kg: null }, 80)).toBeNull();
+    expect(recalculateWithWeight({ ...perfil, fat_pct: null }, 80)).toBeNull();
+  });
+
+  it('los objetivos están desfasados a partir de 1 kg de diferencia, en cualquier sentido', () => {
+    expect(WEIGHT_DRIFT_KG).toBe(1);
+    expect(goalsOutdated(80, 80)).toBe(false);
+    expect(goalsOutdated(80, 79.1)).toBe(false); // el peso de un día sube y baja: no se avisa por ruido
+    expect(goalsOutdated(80, 79)).toBe(true);
+    expect(goalsOutdated(80, 81.5)).toBe(true);
+    expect(goalsOutdated(null, 70)).toBe(false); // objetivos manuales: no hay con qué comparar
   });
 });

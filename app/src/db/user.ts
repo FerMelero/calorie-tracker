@@ -39,7 +39,7 @@ export type Entry = {
   salt: number | null;
 };
 
-const USER_DB_VERSION = 7;
+const USER_DB_VERSION = 8;
 
 let db: SQLiteDatabase | null = null;
 
@@ -168,6 +168,15 @@ function migrate(database: SQLiteDatabase) {
         [foodKey({ source: 'custom', name: r.name, brand: r.brand }), r.name, r.brand, r.serving_g],
       );
     }
+  }
+  if (current < 8) {
+    // Peso corporal: uno por día (si se vuelve a registrar el mismo día, se reemplaza)
+    database.execSync(`
+      CREATE TABLE weights (
+        date TEXT PRIMARY KEY,
+        kg   REAL NOT NULL
+      );
+    `);
   }
   database.execSync(`PRAGMA user_version = ${USER_DB_VERSION}`);
 }
@@ -338,4 +347,21 @@ export async function copyEntries(fromDate: string, toDate: string, meals: MealK
     [toDate, fromDate, ...meals],
   );
   return result.changes;
+}
+
+/** Totales por día de un periodo (las dos fechas incluidas). Los días sin registros no aparecen. */
+export async function getDayTotalsBetween(fromDate: string, toDate: string): Promise<DaySummary[]> {
+  const rows = await getUserDb().getAllAsync<DaySummary>(
+    `SELECT date, COUNT(*) AS count,
+            SUM(kcal) AS kcal, SUM(protein) AS protein, SUM(carbs) AS carbs, SUM(fat) AS fat
+     FROM entries WHERE date >= ? AND date <= ? GROUP BY date ORDER BY date`,
+    [fromDate, toDate],
+  );
+  return rows.map((r) => ({
+    ...r,
+    kcal: Math.round(r.kcal),
+    protein: Math.round(r.protein * 10) / 10,
+    carbs: Math.round(r.carbs * 10) / 10,
+    fat: Math.round(r.fat * 10) / 10,
+  }));
 }

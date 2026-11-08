@@ -14,7 +14,7 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 
 ## Estado del proyecto
 
-**Versión publicada:** `v0.1.1` (APK de prueba para Android de 74,6 MB, como pre-release en GitHub). **En desarrollo:** `v0.1.2` (rama `develop`), todavía sin APK.
+**Versión publicada:** `v0.1.1` (APK de prueba para Android de 74,6 MB, como pre-release en GitHub). **En desarrollo:** `v0.2.0` (rama `develop`), todavía sin APK. Es `0.2.0` y no `0.1.2` porque trae funcionalidades nuevas (raciones, progreso), y por nuestra regla las funcionalidades suben el número **menor**.
 
 ### Funciones hechas
 
@@ -28,7 +28,8 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 | **Hoy** | Diario con 5 franjas (desayuno, comida, snacks, merienda, cena), total del día frente al objetivo, macros con barras, y botón **+** en cada franja que abre Buscar con esa franja elegida. |
 | **Editar** | Los gramos se eligen al añadir (con vista previa de kcal y macros) y se pueden cambiar después, junto con la franja. |
 | **Historial** | Lista de días con sus totales; al tocar uno se ve el detalle y se puede añadir, editar o quitar comida de ese día. |
-| **Objetivos** | El usuario elige sus kcal y macros, o los calcula con Mifflin-St Jeor (sexo, edad, peso, altura, actividad y objetivo). |
+| **Progreso** (pestaña) | Reúne **tus objetivos, las gráficas y el peso**. *Objetivos:* tarjeta con tus kcal y macros, y botón para cambiarlos (el usuario los elige o los calcula con Mifflin-St Jeor: sexo, edad, peso, altura, actividad y objetivo). *Comida:* gráficas de **7, 30 o 90 días** con barras de calorías por día y la línea del objetivo (en rojo los días que te pasas), la media diaria, cuántos días registraste y el reparto medio de calorías entre proteínas, carbohidratos y grasas. *Peso:* registrar el peso de hoy, ayer o anteayer (o corregir uno anterior), gráfica de puntos con una **línea de tendencia** (media de 7 días) y el cambio del periodo. Un día sin comidas registradas **no es un día de 0 kcal**: sale como una marca fina y no entra en la media. |
+| **Peso, una sola vez** | El peso de los objetivos y el de Progreso son el mismo dato: al guardar objetivos calculados, el peso se registra como el de hoy; y al abrir los objetivos sale ya el último peso registrado. Si registras un peso que difiere en 1 kg o más del que se usó para calcular los objetivos, Progreso avisa y ofrece **recalcular con un toque** (nunca se cambian solos). El peso se guarda solo en el móvil y entra en la copia de seguridad. |
 | **Mis alimentos** | El usuario crea los suyos (se guardan en `user.db`, con código de barras opcional) y salen en Buscar con 🥣. |
 | **Copia de seguridad** | Exportar e importar JSON (diario, alimentos propios, favoritos, raciones y objetivos), validando el formato antes de importar; los duplicados se saltan. Al exportar, el sistema no dice si el usuario guardó el archivo o cerró el menú, así que la app solo dice "Archivo preparado" y pide comprobarlo: nunca afirma que la copia esté creada. |
 | **Ventanas inferiores** | Añadir, editar, copiar de otro día y "No lo encontramos" suben desde abajo, se apartan del teclado y se cierran **arrastrando la barrita** (o tocando fuera). Los gramos tienen un solo rango, de 0,1 a 10 000 g, el mismo que acepta la copia de seguridad, con mensaje si te pasas. |
@@ -43,14 +44,14 @@ App móvil para llevar el control de calorías y macros (proteínas, carbohidrat
 |---|---|
 | **`v0.1.0`** | Se instaló y se usó. **Fallo encontrado:** el teclado tapaba los campos (solo en la APK, no en Expo Go). |
 | **`v0.1.1`** (publicada) | Incluye el arreglo del teclado, la reducción de tamaño, SDK 58 (con R8 activado por defecto), escáner, recientes, favoritos, copiar de otro día, el orden por marcas y el arreglo de la franja pegada. **Medido:** pesa 74,6 MB (de 121). **No consta** que se haya pasado la lista de "Lo que Expo Go no reproduce" entera, ni la comprobación concreta de que la búsqueda (FTS5) funciona en la APK. |
-| **Hecho en `develop`, sin APK** (irá en `v0.1.2`) | Correo de sugerencias, raciones (automáticas y definidas por el usuario), barrita arrastrable, límite de gramos, mensaje honesto al exportar, CI/CD y tests. Solo se ha probado en el ordenador: tipos, lint y tests (en una copia limpia, como hace el CI); **nada de esto se ha visto en un móvil**. |
+| **Hecho en `develop`, sin APK** (irá en `v0.2.0`) | Correo de sugerencias, raciones (automáticas y definidas por el usuario), pestaña Progreso (objetivos, gráficas de peso y comida), barrita arrastrable, límite de gramos, mensaje honesto al exportar, CI/CD y tests. Solo se ha probado en el ordenador: tipos, lint y tests (en una copia limpia, como hace el CI); **nada de esto se ha visto en un móvil**. |
 
 ### Siguiente en la lista
 
-Ver **"Pendiente y mejoras"**. Lo más inmediato para sacar la `v0.1.2`:
+Ver **"Pendiente y mejoras"**. Lo más inmediato para sacar la `v0.2.0`:
 1. Publicar la release de `foods.db` (`foods-db-2026-11`) y probar el CD con `dry_run`.
-2. Subir la versión a `0.1.2` y generar la APK.
-3. Pasar la lista de comprobación de la APK (sobre todo raciones, barrita, escáner y teclado) e instalarla **encima de la `v0.1.1`** para comprobar que no se pierden datos.
+2. Subir la versión a `0.2.0` (en `app.json` y `package.json`) y generar la APK.
+3. Pasar la lista de comprobación de la APK (sobre todo raciones, gráficas, barrita, escáner y teclado) e instalarla **encima de la `v0.1.1`** para comprobar que no se pierden datos.
 
 ## Estructura del repo
 
@@ -68,16 +69,19 @@ calorie-tracker/
 │   │   ├── _layout.tsx         #     Abre foods.db y monta las pestañas
 │   │   ├── index.tsx           #     Pestaña "Hoy": diario, franjas y totales
 │   │   ├── explore.tsx         #     Pestaña "Buscar": búsqueda de alimentos
-│   │   ├── goals.tsx           #     Pestaña "Objetivos": calcular o elegir kcal y macros
+│   │   ├── progress/           #     Pestaña "Progreso": objetivos y gráficas (index.tsx) y editor de objetivos (goals.tsx)
 │   │   ├── history/            #     Pestaña "Historial": lista de días y detalle de cada día
 │   │   └── more/               #     Pestaña "Más": Mis alimentos, formulario, copia de seguridad, Acerca de
 │   ├── src/components/         #   Piezas reutilizables
 │   │   ├── app-tabs.tsx        #     Barra de pestañas de abajo
 │   │   ├── add-food-modal.tsx  #     Ventana para añadir: franja, gramos, selector de raciones y "definir mi ración"
 │   │   ├── edit-entry-modal.tsx #    Ventana para cambiar los gramos o la franja de un registro
+│   │   ├── progress-view.tsx   #     Pantalla de Progreso: objetivos, aviso de recálculo, gráficas de comida y peso
+│   │   ├── bar-chart.tsx, line-chart.tsx # Las gráficas (dibujadas con react-native-svg)
+│   │   ├── weight-sheet.tsx    #     Ventana para registrar o corregir el peso
 │   │   ├── macro-pills.tsx     #     Etiquetas de proteínas / carbos / grasas
 │   │   ├── macro-bar.tsx       #     Barra con el reparto de macros
-│   │   ├── form-controls.tsx   #     Botones de elección, campos numéricos y botones − / +
+│   │   ├── form-controls.tsx   #     Botones de elección (Chips), selector de ancho completo (Segmented), campos numéricos y botones − / +
 │   │   ├── day-view.tsx        #     Resumen de un día (lo usan Hoy y el detalle del Historial)
 │   │   ├── themed-stack.tsx    #     Navegación con cabecera nativa con los colores de la app
 │   │   ├── barcode-scanner-modal.tsx # Cámara que lee códigos de barras
@@ -97,10 +101,13 @@ calorie-tracker/
 │   │   ├── goals.ts            #     Guardar y leer los objetivos del usuario
 │   │   ├── custom-foods.ts     #     Alimentos propios (tabla custom_foods de user.db)
 │   │   ├── servings.ts         #     Raciones definidas por el usuario (tabla servings de user.db)
+│   │   ├── weights.ts          #     Peso corporal (tabla weights de user.db)
 │   │   ├── favorites.ts        #     Favoritos (tabla favorites de user.db)
 │   │   └── backup.ts           #     Construir la copia de seguridad e importarla
 │   ├── src/constants/contact.ts #  Correo de sugerencias (SUGGESTIONS_EMAIL) y apertura del correo
 │   ├── src/lib/                #   Funciones puras (sin Expo); tests en src/lib/__tests__/
+│   │   ├── progress.ts         #     Medias, huecos, tendencia del peso, reparto de macros y escalas de las gráficas
+│   │   ├── chart.ts            #     Geometría de las gráficas (dónde va cada barra, punto y línea)
 │   │   ├── sheet.ts            #     Cuándo se cierra una ventana arrastrada (distancia y velocidad)
 │   │   ├── serving.ts          #     Raciones: plural, "1,5 bolsitas", gramos y pasos del selector
 │   │   ├── food-key.ts         #     Clave de un alimento (origen + nombre + marca) para favoritos y raciones
@@ -139,12 +146,14 @@ calorie-tracker/
 | Cambiar qué supermercados o marcas salen primero, o su orden | `pipeline/brands.py`, luego regenerar `foods.db` |
 | Cambiar la pantalla de búsqueda | `app/src/app/explore.tsx` |
 | Cambiar la pantalla del día | `app/src/app/index.tsx` |
+| Cambiar las gráficas o la tarjeta de objetivos | `app/src/components/progress-view.tsx` (cálculos en `lib/progress.ts`, posiciones en `lib/chart.ts`) |
+| Cambiar cómo se calculan o se editan los objetivos | `app/src/app/progress/goals.tsx` y `app/src/lib/nutrition.ts` |
 | Guardar algo nuevo en el diario (campos, tablas) | `app/src/db/user.ts` (nueva migración subiendo `USER_DB_VERSION`) |
 | Cambiar qué se considera un dato válido (importar / alimentos propios) | `app/src/lib/validation.ts` |
 | Cambiar la fórmula de objetivos o sus rangos | `app/src/lib/nutrition.ts` |
 | Poner o cambiar el correo de sugerencias | `app/src/constants/contact.ts` (`SUGGESTIONS_EMAIL`) |
 | Cambiar colores o espacios | `app/src/constants/theme.ts` |
-| Añadir o renombrar una pestaña | un archivo en `app/src/app/` + `app/src/components/app-tabs.tsx` |
+| Añadir o renombrar una pestaña | un archivo o carpeta en `app/src/app/` + `app/src/components/app-tabs.tsx`. Ojo: la barra de abajo está en **5 pestañas** (Hoy, Buscar, Historial, Progreso, Más), el máximo cómodo en Android |
 
 ## Primeros pasos
 
@@ -197,8 +206,9 @@ Ejecuta lint, tipos y tests antes de dar una tarea por terminada: es lo mismo qu
 - **Raciones:** dos fuentes, y la del usuario manda. (1) `foods.serving_g`, que el pipeline rellena **solo** si el producto trae ración en Open Food Facts **y** está en una categoría donde tiene sentido (`servings.py`); se descartan los "100 g" (casi siempre un valor por defecto) y los paquetes enteros en cosas pequeñas. (2) La tabla `servings` de `user.db`, con la ración que el usuario define para cualquier alimento, identificado por origen + nombre + marca (la misma clave que los favoritos, así que no depende de los ids de `foods.db`). Entra en la copia de seguridad (campo opcional `servings`).
 - **Alimentos propios:** tabla `custom_foods` en `user.db` (nunca en `foods.db`, que es de solo lectura y se reemplaza al actualizar). Cada registro del diario guarda su propia copia de los valores, así que borrar o editar un alimento propio no cambia días pasados.
 - **Favoritos y recientes:** los favoritos se guardan en `user.db` (tabla `favorites`) con una copia de sus valores por 100 g, igual que los registros. Los recientes no tienen tabla: se calculan a partir del diario (último registro de cada alimento) y sus valores por 100 g se deducen de ese registro.
-- **Copia de seguridad:** JSON con `app`, `format_version`, `custom_foods`, `favorites` y `servings` (opcionales: las copias antiguas no los traen), `entries` y `goals`. Al importar se valida todo (mismas reglas que el pipeline: por 100 g, kcal 0–900, macros ≤ 100 g, nombres de 3 a 100 letras, fechas reales, franjas válidas); si algo falla no se importa nada. Los duplicados se saltan.
-- **Objetivos:** una sola fila en `user.db` (tabla `goals`). No hay cuentas: los objetivos pertenecen a quien usa ese móvil. Guarda tanto el resultado (kcal y macros) como los datos del cálculo, para poder editarlos después.
+- **Peso:** tabla `weights` en `user.db` (una fila por día; registrar otra vez el mismo día la reemplaza). Rango 20–400 kg, el mismo que los objetivos. Las gráficas se calculan al abrir la pantalla a partir de `entries` y `weights`: no hay tablas de resumen.
+- **Copia de seguridad:** JSON con `app`, `format_version`, `custom_foods`, `favorites`, `servings` y `weights` (opcionales: las copias antiguas no los traen), `entries` y `goals`. Al importar se valida todo (mismas reglas que el pipeline: por 100 g, kcal 0–900, macros ≤ 100 g, nombres de 3 a 100 letras, fechas reales, franjas válidas); si algo falla no se importa nada. Los duplicados se saltan.
+- **Objetivos y peso:** el peso de los objetivos calculados y el de la tabla `weights` son el mismo dato (ver "Peso, una sola vez"). Los objetivos son una sola fila en `user.db` (tabla `goals`). No hay cuentas: los objetivos pertenecen a quien usa ese móvil. Guarda tanto el resultado (kcal y macros) como los datos del cálculo, para poder editarlos después.
 - **Orden de los resultados:** cada alimento de `foods.db` tiene `brand_rank` (1–49 marca de supermercado, 50–99 sin marca conocida pero se vende en uno, 100 marca conocida, vacío el resto) y `scans` (veces escaneado en OFF). La app ordena por `parecido + bonus`: 40 puntos a un supermercado (algo menos cuanto más abajo esté en la lista), 20 a una marca conocida, hasta 10 por popularidad y 50 a los alimentos propios. El parecido que se muestra no incluye los bonus. Los pesos están en `app/src/db/search.ts`. Como en búsquedas amplias ("pollo") los 100 más parecidos pueden no incluir ninguno de supermercado, se piden tres listas de candidatos (por parecido, por marca y por popularidad) y se ordenan juntas.
 - **Búsqueda:** el texto se pasa a minúsculas y sin tildes. Primero busca palabras que empiezan por lo escrito (FTS5, muy rápido) y luego lo escrito dentro de cualquier palabra (LIKE). Cada resultado recibe un porcentaje de parecido y se ordenan de mayor a menor. Solo funciona en español y no corrige erratas.
 
@@ -249,7 +259,7 @@ Ordenado por prioridad. Cada punto es una rama `feature/…` o `fix/…` (ver "V
 - [ ] **Mostrar fibra, azúcares y sal** en la interfaz (ya se guardan).
 - [ ] **Escáner: consulta opcional a Open Food Facts** para traer productos que no están en `foods.db`. Se decidió **no hacerlo por ahora** para mantener la app 100 % offline (el escáner solo mira la base y los alimentos propios). Si algún día se hace: sería opcional y con aviso, y habría que declararlo en la política de privacidad y en Play Store.
 - [ ] **Escáner: códigos UPC-E** (8 dígitos comprimidos) no se expanden a 12 dígitos, así que no coincidirían con `foods.db`. Poco habitual en España.
-- [ ] **Registro de peso y gráficas** de evolución (calorías por semana, peso).
+- [ ] **Progreso, ideas de seguimiento:** peso objetivo dibujado en la gráfica; usar el último peso al recalcular los objetivos; gráfica de proteínas por día; comparar semanas. Hoy la gráfica de comida es de calorías y el reparto medio de macros.
 - [ ] **Mover un registro a otro día** (hoy se edita gramos y franja, no la fecha).
 - [ ] **Varios perfiles en el mismo móvil** (hoy hay un único usuario por dispositivo).
 - [ ] **Búsqueda en inglés** (hoy solo español; la app lo avisa) y **corrección de erratas** ("jamn" no encuentra "jamón").
@@ -306,13 +316,18 @@ Por eso, antes de dar un fallo por arreglado hay que probarlo en una APK. Lista 
 
 - [ ] Buscar → tocar un alimento → escribir los gramos: la ventana sube y se ve lo que escribes y el botón "Añadir".
 - [ ] Editar un registro (Hoy o Historial) → escribir los gramos: igual.
-- [ ] Objetivos → rellenar edad, peso y altura (el último campo no queda tapado) y los campos del modo manual.
+- [ ] Progreso → Cambiar mis objetivos → rellenar edad, peso y altura (el último campo no queda tapado) y los campos del modo manual.
+- [ ] **Selector "Calcular por mí | Elegir las mías"** (Progreso → Cambiar mis objetivos): ocupa todo el ancho, con las dos mitades iguales, y **se lee entero** (el texto se encoge si no cabe; antes se veía solo "Calcular por"). Si aun así se corta, hacer una captura y anotar el modelo de móvil, la versión de Android y el tamaño de letra del sistema. Mismo selector en 7 / 30 / 90 días. Probar también con el texto del sistema en tamaño grande.
+- [ ] **Peso enlazado con los objetivos:** (a) con objetivos calculados, abrir Progreso → Cambiar mis objetivos: el peso sale ya relleno con tu último peso registrado y lo dice debajo; (b) cambiar el peso allí y guardar: en Progreso aparece como el peso de hoy; (c) registrar en Progreso un peso 1 kg o más distinto del de los objetivos: sale el aviso con las kcal nuevas y "Recalcular con mi peso actual" las actualiza (y Hoy muestra el objetivo nuevo); (d) con objetivos manuales no sale ese aviso; (e) una diferencia de menos de 1 kg no avisa.
 - [ ] Más → Mis alimentos → Nuevo alimento: los campos de abajo (grasas, fibra, sal) quedan por encima del teclado.
 - [ ] Buscar sin escribir: aparecen Recientes (con la última cantidad al tocar) y Favoritos; la estrella añade y quita.
 - [ ] Hoy → "Copiar de otro día": elige día y franjas, y se copian al día actual.
 - [ ] **Franja pegada:** en Hoy, + de Desayuno → añadir algo → ir a Hoy y abrir Buscar desde la barra de abajo: ya no debe decir "Añadiendo a Desayuno" ni preseleccionarlo. Si vuelves a pulsar el + de otra franja, sí debe usarla.
 - [ ] Escáner (📷 en Buscar): pide permiso de cámara la primera vez; un producto conocido (p. ej. algo de Hacendado) abre directamente la ventana de añadir; un código inventado muestra "No lo encontramos" con las opciones; "Crear este alimento" abre el formulario con el código ya puesto y, al guardar, se abre para añadirlo; con la luz apagada, el botón 🔦 enciende el flash. Al escanear de nuevo ese código, ya sale el alimento creado.
 - [ ] Raciones: (a) buscar un yogur o unas galletas de supermercado: al abrirlos sale el selector "Raciones" con "indicada por el fabricante", y − / + cambian los gramos de media en media; (b) buscar unos cereales o un aceite: **no** sale selector, solo "Definir mi ración (opcional)"; (c) en un alimento cualquiera, "Definir mi ración" con 125 g y "bolsita": el selector pasa a decir "1 bolsita = 125 g" y "1,5 bolsitas"; (d) cerrar y volver a abrirlo, y también desde Recientes y Favoritos: la ración sigue ahí; (e) "Cambiar mi ración" y "Quitar mi ración" (si había una del fabricante, vuelve a esa); (f) crear un alimento propio con ración en el formulario y renombrarlo después; (g) exportar e importar la copia: las raciones se conservan; (h) escribir los gramos a mano y comprobar que la ración no pisa lo escrito.
+- [ ] **Progreso (pestaña Progreso):** con comidas registradas salen las barras de calorías, la media, "Registraste X de N días" y el reparto de macros; los días sin registro son una marca fina (no un 0); la línea discontinua es el objetivo y las barras que lo superan van en rojo. Cambiar entre 7, 30 y 90 días. Sin ningún dato: mensajes de "aún no hay", no una gráfica vacía. Registrar un peso (hoy, ayer o anteayer): aparece el punto y la tendencia; registrar otro el mismo día lo reemplaza; tocar un peso de la lista lo corrige o lo quita. Las gráficas se ven completas en modo oscuro y con la pantalla girada o pequeña, y los números del eje no se cortan.
+- [ ] **Peso en la copia de seguridad:** exportar e importar conserva los pesos; importar sobre un día que ya tiene peso no lo pisa.
+- [ ] **Pestañas:** la barra de abajo tiene Hoy, Buscar, Historial, Progreso y Más (ya no hay "Objetivos"); "Define tus objetivos →" en Hoy abre el editor de objetivos dentro de Progreso, y desde ahí se puede volver con el botón atrás.
 - [ ] **Barrita de las ventanas inferiores** (añadir, editar, copiar de otro día, "No lo encontramos"): al arrastrarla hacia abajo la ventana sigue al dedo; si se suelta pasado ~120 puntos, o con un lanzamiento rápido, se cierra; si se suelta antes, vuelve a su sitio. Tocar fuera y el botón atrás siguen cerrándola. Con el teclado abierto, también se puede cerrar arrastrando. Al abrir la misma ventana otra vez, aparece entera (no se queda fuera de pantalla).
 - [ ] **Límite de gramos:** al añadir o editar, escribir 50000 o 0,05 muestra "Entre 0,1 y 10000 gramos." y no deja añadir; 10000 y 0,1 sí. Con una ración muy grande, el botón + no pasa de 10 000 g. Exportar una copia con cantidades extremas (10000, 0,1) e importarla: se acepta.
 - [ ] **Exportar y cancelar:** Más → Copia de seguridad → Exportar mis datos → cerrar el menú de compartir sin elegir nada. Debe salir "Archivo preparado" con el aviso de que la app no sabe si lo guardaste, y **no** "Copia creada" ni una marca ✓. Al volver a pulsar Exportar, o al Importar, el aviso desaparece. Elegir un sitio y comprobar que el archivo llega de verdad.
@@ -376,7 +391,7 @@ En la PR ves una marca verde ✓ o roja ✗. Si algo falla, el detalle está en 
 ### CD — `release.yml` (al poner un tag)
 Al subir un tag `vX.Y.Z`:
 1. Ejecuta el CI entero. Si falla, **no compila nada** (y no gasta una build).
-2. Comprueba que el tag coincide con la versión de `app.json` (el tag `v0.1.2` exige `version: 0.1.2`).
+2. Comprueba que el tag coincide con la versión de `app.json` (el tag `v0.2.0` exige `version: 0.2.0`).
 3. Descarga `foods.db` de la release indicada en `pipeline/FOODS_DB_RELEASE` y la valida con `pipeline/check_foods_db.py`.
 4. Compila la APK con EAS Build (perfil `preview`).
 5. Crea una **release en borrador y pre-release** con la APK ya renombrada (`contador-calorias-vX.Y.Z.apk`) y las notas generadas. La pruebas y, si va bien, pulsas **Publish**.
@@ -437,9 +452,9 @@ La versión sigue **MAYOR.MENOR.PARCHE**:
 |---|---|---|
 | `v0.1.0` | `56abae2` | Primera APK de prueba (build EAS `a8aa55e4`): buscar alimentos, diario por franjas, objetivos (Mifflin-St Jeor), historial, alimentos propios, editar registros, exportar/importar |
 | `v0.1.1` | `84953b7` | Escáner de códigos de barras, recientes, favoritos, copiar de otro día, orden de resultados por supermercado y marca conocida, arreglo del teclado en la APK, APK más pequeña (74,6 MB; solo arquitecturas de móvil), Expo SDK 58, franja de Buscar que ya no se queda pegada. La APK se subió con el nombre `application-f68eb37a-….apk` (conviene renombrarla a `contador-calorias-v0.1.1.apk`). |
-| `v0.1.2` *(en `develop`, sin APK)* | — | Correo de sugerencias, raciones (automáticas donde tienen sentido y definidas por el usuario), barrita de las ventanas arrastrable, límite de gramos unificado con la copia de seguridad, mensaje honesto al exportar, CI/CD y tests |
+| `v0.2.0` *(en `develop`, sin APK)* | — | Pestaña **Progreso** (objetivos, gráficas de comida y peso, registro de peso enlazado con los objetivos), correo de sugerencias, raciones (automáticas donde tienen sentido y definidas por el usuario), barrita de las ventanas arrastrable, límite de gramos unificado con la copia de seguridad, mensaje honesto al exportar, CI/CD y tests |
 
-> La APK de `v0.1.0` se generó con la versión interna `1.0.0` (versionCode 1), antes de adoptar este esquema. Desde `v0.1.1` la versión interna coincide con el tag.
+> La APK de `v0.1.0` se generó con la versión interna `1.0.0` (versionCode 1), antes de adoptar este esquema. Desde `v0.1.1` la versión interna coincide con el tag. La `v0.1.1` llevaba funcionalidades nuevas (escáner, recientes, favoritos…) y por la regla debió ser `0.2.0`; ya está publicada y no se cambia. **Desde `v0.2.0` se aplica la regla:** funcionalidades nuevas suben el número menor, solo arreglos suben el parche.
 
 ### Cómo sacar una versión (receta)
 

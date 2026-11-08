@@ -72,6 +72,9 @@ export type ServingInput = {
   label: string | null;
 };
 
+/** Un peso corporal registrado un día. */
+export type WeightInput = { date: string; kg: number };
+
 /** Alimento favorito: copia de sus valores por 100 g y de dónde venía. */
 export type FavoriteInput = CustomFoodInput & { source: 'db' | 'custom' };
 
@@ -99,9 +102,23 @@ export type Backup = {
   custom_foods: CustomFoodInput[];
   favorites: FavoriteInput[];
   servings: ServingInput[];
+  weights: WeightInput[];
   entries: EntryInput[];
   goals: GoalsInput | null;
 };
+
+/** Peso corporal en kg: el mismo rango que ya exige validateGoals. */
+export const WEIGHT_RANGE = { min: 20, max: 400 } as const;
+
+/**
+ * Lee el peso que escribe el usuario (acepta coma decimal) y lo redondea a un decimal. null si no
+ * es un número o queda fuera de 20 a 400 kg.
+ */
+export function parseWeight(text: string): number | null {
+  const value = parseNumber(text);
+  if (value === null || value < WEIGHT_RANGE.min || value > WEIGHT_RANGE.max) return null;
+  return Math.round(value * 10) / 10;
+}
 
 /** Gramos mínimo y máximo de un registro del diario (el mismo rango que exige la copia de seguridad). */
 export const GRAMS_RANGE = { min: 0.1, max: LIMITS.GRAMS_MAX } as const;
@@ -235,6 +252,19 @@ export function validateFavorite(raw: unknown, path = 'favorito'): ValidationRes
   return { ok: true, data: { ...food.data, source } };
 }
 
+export function validateWeight(raw: unknown, path = 'peso'): ValidationResult<WeightInput> {
+  const errors: string[] = [];
+  if (!isObj(raw)) return { ok: false, errors: [`${path}: tiene que ser un objeto`] };
+
+  let date: string | null = null;
+  if (typeof raw.date === 'string' && isValidISODate(raw.date)) date = raw.date;
+  else errors.push(`${path}.date: tiene que ser una fecha real con formato AAAA-MM-DD`);
+  const kg = readNumber(raw.kg, `${path}.kg`, WEIGHT_RANGE.min, WEIGHT_RANGE.max, errors);
+
+  if (errors.length > 0 || date === null || kg === null) return { ok: false, errors };
+  return { ok: true, data: { date, kg: round1(kg) } };
+}
+
 export function validateServing(raw: unknown, path = 'racion'): ValidationResult<ServingInput> {
   const errors: string[] = [];
   if (!isObj(raw)) return { ok: false, errors: [`${path}: tiene que ser un objeto`] };
@@ -350,6 +380,7 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
   const customFoods: CustomFoodInput[] = [];
   const favorites: FavoriteInput[] = [];
   const servings: ServingInput[] = [];
+  const weights: WeightInput[] = [];
   const entries: EntryInput[] = [];
   let goals: GoalsInput | null = null;
 
@@ -386,6 +417,18 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
     }
   }
 
+  // weights también es opcional: las copias antiguas no lo traen
+  if (raw.weights !== undefined && raw.weights !== null) {
+    if (!Array.isArray(raw.weights)) errors.push('weights: tiene que ser una lista');
+    else {
+      raw.weights.forEach((item, i) => {
+        const r = validateWeight(item, `weights[${i}]`);
+        if (r.ok) weights.push(r.data);
+        else errors.push(...r.errors);
+      });
+    }
+  }
+
   if (!Array.isArray(raw.entries)) errors.push('entries: tiene que ser una lista');
   else {
     raw.entries.forEach((item, i) => {
@@ -412,6 +455,7 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
       custom_foods: customFoods,
       favorites,
       servings,
+      weights,
       entries,
       goals,
     },

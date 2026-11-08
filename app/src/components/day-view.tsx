@@ -103,7 +103,7 @@ export function DayView({ date, header }: Props) {
             ) : (
               <>
                 <MacroPills {...total} textColor="#ffffff" />
-                <Pressable onPress={() => router.navigate('/goals')}>
+                <Pressable onPress={() => router.navigate('/progress/goals')}>
                   <ThemedText type="smallBold" style={styles.link}>
                     Define tus objetivos →
                   </ThemedText>

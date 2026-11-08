@@ -35,3 +35,19 @@ export function relativeDayLabel(iso: string, todayIso: string): string {
   if (diff === 2) return 'Anteayer';
   return formatLongDate(iso);
 }
+
+/** Suma (o resta, con negativos) días a una fecha YYYY-MM-DD, en hora local y sin problemas de cambio de hora. */
+export function addDays(iso: string, days: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(y, m - 1, d + days, 12);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+/** "8 nov" a partir de "2026-11-08" (para los ejes de las gráficas). */
+export function shortDate(iso: string): string {
+  const [, m, d] = iso.split('-').map(Number);
+  return `${d} ${MONTHS[m - 1]}`;
+}

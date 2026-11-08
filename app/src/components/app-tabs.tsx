@@ -33,9 +33,9 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon sf="clock.fill" md="history" />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="goals">
-        <NativeTabs.Trigger.Label>Objetivos</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="flag.fill" md="flag" />
+      <NativeTabs.Trigger name="progress">
+        <NativeTabs.Trigger.Label>Progreso</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="chart.line.uptrend.xyaxis" md="show_chart" />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="more">

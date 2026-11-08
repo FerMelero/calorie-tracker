@@ -46,7 +46,7 @@ export default function BackupScreen() {
         UTI: 'public.json',
       });
       setExportNote(
-        `Contiene ${backup.entries.length} registros, ${backup.custom_foods.length} alimentos propios, ${backup.favorites.length} favoritos y ${backup.servings.length} raciones.`,
+        `Contiene ${backup.entries.length} registros, ${backup.custom_foods.length} alimentos propios, ${backup.favorites.length} favoritos, ${backup.servings.length} raciones y ${backup.weights.length} pesos.`,
       );
     } catch (e) {
       setErrors([`No se pudo exportar: ${e instanceof Error ? e.message : String(e)}`]);
@@ -86,7 +86,7 @@ export default function BackupScreen() {
       const { data } = result;
       Alert.alert(
         'Importar copia de seguridad',
-        `Se van a añadir hasta ${data.custom_foods.length} alimentos propios, ${data.favorites.length} favoritos, ${data.servings.length} raciones y ${data.entries.length} registros del diario ` +
+        `Se van a añadir hasta ${data.custom_foods.length} alimentos propios, ${data.favorites.length} favoritos, ${data.servings.length} raciones, ${data.weights.length} pesos y ${data.entries.length} registros del diario ` +
           '(los que ya tengas no se duplican).' +
           (data.goals ? '\n\nTus objetivos actuales se reemplazarán por los del archivo.' : ''),
         [
@@ -97,7 +97,7 @@ export default function BackupScreen() {
               try {
                 const s = await importBackup(data);
                 setMessage(
-                  `Importado: ${s.addedEntries} registros, ${s.addedFoods} alimentos propios y ${s.addedFavorites} favoritos y ${s.addedServings} raciones nuevos` +
+                  `Importado: ${s.addedEntries} registros, ${s.addedFoods} alimentos propios y ${s.addedFavorites} favoritos, ${s.addedServings} raciones y ${s.addedWeights} pesos nuevos` +
                     (s.skippedEntries + s.skippedFoods > 0
                       ? ` (${s.skippedEntries + s.skippedFoods} ya existían).`
                       : '.') +
@@ -123,7 +123,7 @@ export default function BackupScreen() {
         <Card>
           <ThemedText type="smallBold">Exportar</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Guarda en un archivo tu diario, tus alimentos propios, tus favoritos, tus raciones y tus objetivos. Es tu única copia de
+            Guarda en un archivo tu diario, tus alimentos propios, tus favoritos, tus raciones, tu peso y tus objetivos. Es tu única copia de
             seguridad: la app no usa cuentas ni servidores. Al pulsar, el móvil te pedirá dónde guardar el archivo (Drive, el
             correo, una carpeta…): elige un sitio y comprueba que ha llegado.
           </ThemedText>

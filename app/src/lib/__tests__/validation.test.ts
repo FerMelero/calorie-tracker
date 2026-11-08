@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import { MAX_LABEL_LENGTH } from '@/lib/serving';
-import { LIMITS, validateBackup, validateCustomFood, validateEntry, validateGoals, validateServing } from '@/lib/validation';
+import {
+  LIMITS,
+  parseWeight,
+  validateBackup,
+  validateCustomFood,
+  validateEntry,
+  validateGoals,
+  validateServing,
+  validateWeight,
+  WEIGHT_RANGE,
+} from '@/lib/validation';
 
 const food = (over: Record<string, unknown> = {}) => ({
   name: 'Granola casera', kcal: 450, protein: 10, carbs: 60, fat: 15, ...over,
@@ -104,6 +114,51 @@ describe('raciones que define el usuario', () => {
     const r = validateBackup(backup({ servings: [racion(), racion({ grams: 0 })] }));
     expect(r.ok).toBe(false);
     expect(errorsOf(r).join('\n')).toContain('servings[1].grams');
+  });
+});
+
+describe('peso corporal', () => {
+  it('parseWeight acepta de 20 a 400 kg, con coma o punto, y redondea a un decimal', () => {
+    expect(parseWeight('72,4')).toBe(72.4);
+    expect(parseWeight(' 72.46 ')).toBe(72.5);
+    expect(parseWeight(String(WEIGHT_RANGE.min))).toBe(20);
+    expect(parseWeight(String(WEIGHT_RANGE.max))).toBe(400);
+  });
+
+  it('parseWeight rechaza lo que no es un peso', () => {
+    for (const bad of ['', 'abc', '0', '-70', '19,9', '400,1', '1000', '72kg']) expect(parseWeight(bad), bad).toBeNull();
+  });
+
+  it('validateWeight exige fecha real y peso en rango', () => {
+    expect(validateWeight({ date: '2026-11-08', kg: 72.4 }).ok).toBe(true);
+    expect(validateWeight({ date: '2026-02-31', kg: 72 }).ok).toBe(false);
+    expect(validateWeight({ date: '08/11/2026', kg: 72 }).ok).toBe(false);
+    expect(validateWeight({ date: '2026-11-08', kg: 5 }).ok).toBe(false);
+    expect(validateWeight({ date: '2026-11-08', kg: 'mucho' }).ok).toBe(false);
+  });
+
+  it('el rango es el mismo que el de los objetivos', () => {
+    const meta = (weight_kg: number) =>
+      validateGoals({ mode: 'auto', weight_kg, kcal: 2000, protein: 100, carbs: 200, fat: 60 }).ok;
+    expect(meta(WEIGHT_RANGE.min)).toBe(true);
+    expect(meta(WEIGHT_RANGE.max)).toBe(true);
+    expect(meta(WEIGHT_RANGE.min - 1)).toBe(false);
+    expect(meta(WEIGHT_RANGE.max + 1)).toBe(false);
+  });
+
+  it('viaja en la copia de seguridad y una copia antigua sin el campo sigue valiendo', () => {
+    const r = validateBackup(backup({ weights: [{ date: '2026-11-08', kg: 72.4 }, { date: '2026-11-07', kg: 72.9 }] }));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.data.weights).toHaveLength(2);
+    const antigua = validateBackup(backup());
+    expect(antigua.ok).toBe(true);
+    if (antigua.ok) expect(antigua.data.weights).toEqual([]);
+  });
+
+  it('un peso malo hace fallar la copia y dice cuál', () => {
+    const r = validateBackup(backup({ weights: [{ date: '2026-11-08', kg: 72 }, { date: '2026-11-09', kg: 0 }] }));
+    expect(r.ok).toBe(false);
+    expect(errorsOf(r).join('\n')).toContain('weights[1].kg');
   });
 });
 

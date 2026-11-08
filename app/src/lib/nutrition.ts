@@ -92,3 +92,48 @@ export function parseNumber(text: string): number | null {
   const value = Number(text.trim().replace(',', '.'));
   return text.trim() !== '' && Number.isFinite(value) ? value : null;
 }
+
+/** Los datos con los que se calcularon unos objetivos "automáticos" (lo que guarda la tabla goals). */
+export type StoredProfile = {
+  sex: Sex | null;
+  age: number | null;
+  weight_kg: number | null;
+  height_cm: number | null;
+  activity: Activity | null;
+  objective: Objective | null;
+  adjust_pct: number | null;
+  protein_per_kg: number | null;
+  fat_pct: number | null;
+};
+
+/** Diferencia de peso (kg) a partir de la cual los objetivos calculados se consideran desfasados. */
+export const WEIGHT_DRIFT_KG = 1;
+
+/** true si los objetivos se calcularon con un peso que ya no es el actual (por 1 kg o más). */
+export function goalsOutdated(calculatedWithKg: number | null, currentKg: number): boolean {
+  return calculatedWithKg !== null && Math.abs(currentKg - calculatedWithKg) >= WEIGHT_DRIFT_KG - 1e-9;
+}
+
+/**
+ * Vuelve a calcular unos objetivos con un peso nuevo, conservando el resto de datos (sexo, edad,
+ * altura, actividad, objetivo y reparto). null si faltan datos, es decir, si no eran automáticos.
+ */
+export function recalculateWithWeight(p: StoredProfile, weightKg: number): CalcResult | null {
+  if (
+    p.sex === null || p.age === null || p.height_cm === null || p.activity === null ||
+    p.objective === null || p.protein_per_kg === null || p.fat_pct === null
+  ) {
+    return null;
+  }
+  return calculateGoals({
+    sex: p.sex,
+    age: p.age,
+    weightKg,
+    heightCm: p.height_cm,
+    activity: p.activity,
+    objective: p.objective,
+    adjustPercent: p.adjust_pct ?? 0,
+    proteinPerKg: p.protein_per_kg,
+    fatPercent: p.fat_pct,
+  });
+}

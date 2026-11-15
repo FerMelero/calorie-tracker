@@ -72,6 +72,12 @@ export type ServingInput = {
   label: string | null;
 };
 
+/** Un peso corporal registrado un día. */
+export type WeightInput = { date: string; kg: number };
+
+/** Un logro desbloqueado y el día en que se consiguió. Los ids desconocidos se aceptan (logros de versiones futuras). */
+export type AchievementInput = { id: string; unlocked_on: string };
+
 /** Alimento favorito: copia de sus valores por 100 g y de dónde venía. */
 export type FavoriteInput = CustomFoodInput & { source: 'db' | 'custom' };
 
@@ -99,9 +105,24 @@ export type Backup = {
   custom_foods: CustomFoodInput[];
   favorites: FavoriteInput[];
   servings: ServingInput[];
+  weights: WeightInput[];
+  achievements: AchievementInput[];
   entries: EntryInput[];
   goals: GoalsInput | null;
 };
+
+/** Peso corporal en kg: el mismo rango que ya exige validateGoals. */
+export const WEIGHT_RANGE = { min: 20, max: 400 } as const;
+
+/**
+ * Lee el peso que escribe el usuario (acepta coma decimal) y lo redondea a un decimal. null si no
+ * es un número o queda fuera de 20 a 400 kg.
+ */
+export function parseWeight(text: string): number | null {
+  const value = parseNumber(text);
+  if (value === null || value < WEIGHT_RANGE.min || value > WEIGHT_RANGE.max) return null;
+  return Math.round(value * 10) / 10;
+}
 
 /** Gramos mínimo y máximo de un registro del diario (el mismo rango que exige la copia de seguridad). */
 export const GRAMS_RANGE = { min: 0.1, max: LIMITS.GRAMS_MAX } as const;
@@ -235,6 +256,32 @@ export function validateFavorite(raw: unknown, path = 'favorito'): ValidationRes
   return { ok: true, data: { ...food.data, source } };
 }
 
+export function validateWeight(raw: unknown, path = 'peso'): ValidationResult<WeightInput> {
+  const errors: string[] = [];
+  if (!isObj(raw)) return { ok: false, errors: [`${path}: tiene que ser un objeto`] };
+
+  let date: string | null = null;
+  if (typeof raw.date === 'string' && isValidISODate(raw.date)) date = raw.date;
+  else errors.push(`${path}.date: tiene que ser una fecha real con formato AAAA-MM-DD`);
+  const kg = readNumber(raw.kg, `${path}.kg`, WEIGHT_RANGE.min, WEIGHT_RANGE.max, errors);
+
+  if (errors.length > 0 || date === null || kg === null) return { ok: false, errors };
+  return { ok: true, data: { date, kg: round1(kg) } };
+}
+
+export function validateAchievement(raw: unknown, path = 'logro'): ValidationResult<AchievementInput> {
+  const errors: string[] = [];
+  if (!isObj(raw)) return { ok: false, errors: [`${path}: tiene que ser un objeto`] };
+
+  const id = readText(raw.id, `${path}.id`, 1, 60, errors);
+  let unlockedOn: string | null = null;
+  if (typeof raw.unlocked_on === 'string' && isValidISODate(raw.unlocked_on)) unlockedOn = raw.unlocked_on;
+  else errors.push(`${path}.unlocked_on: tiene que ser una fecha real con formato AAAA-MM-DD`);
+
+  if (errors.length > 0 || id === null || unlockedOn === null) return { ok: false, errors };
+  return { ok: true, data: { id, unlocked_on: unlockedOn } };
+}
+
 export function validateServing(raw: unknown, path = 'racion'): ValidationResult<ServingInput> {
   const errors: string[] = [];
   if (!isObj(raw)) return { ok: false, errors: [`${path}: tiene que ser un objeto`] };
@@ -350,6 +397,8 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
   const customFoods: CustomFoodInput[] = [];
   const favorites: FavoriteInput[] = [];
   const servings: ServingInput[] = [];
+  const weights: WeightInput[] = [];
+  const achievements: AchievementInput[] = [];
   const entries: EntryInput[] = [];
   let goals: GoalsInput | null = null;
 
@@ -386,6 +435,30 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
     }
   }
 
+  // weights también es opcional: las copias antiguas no lo traen
+  if (raw.weights !== undefined && raw.weights !== null) {
+    if (!Array.isArray(raw.weights)) errors.push('weights: tiene que ser una lista');
+    else {
+      raw.weights.forEach((item, i) => {
+        const r = validateWeight(item, `weights[${i}]`);
+        if (r.ok) weights.push(r.data);
+        else errors.push(...r.errors);
+      });
+    }
+  }
+
+  // achievements también es opcional: las copias antiguas no lo traen
+  if (raw.achievements !== undefined && raw.achievements !== null) {
+    if (!Array.isArray(raw.achievements)) errors.push('achievements: tiene que ser una lista');
+    else {
+      raw.achievements.forEach((item, i) => {
+        const r = validateAchievement(item, `achievements[${i}]`);
+        if (r.ok) achievements.push(r.data);
+        else errors.push(...r.errors);
+      });
+    }
+  }
+
   if (!Array.isArray(raw.entries)) errors.push('entries: tiene que ser una lista');
   else {
     raw.entries.forEach((item, i) => {
@@ -412,6 +485,8 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
       custom_foods: customFoods,
       favorites,
       servings,
+      weights,
+      achievements,
       entries,
       goals,
     },

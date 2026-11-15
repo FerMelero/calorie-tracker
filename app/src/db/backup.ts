@@ -1,5 +1,7 @@
+import { listAchievementsForBackup } from '@/db/achievements';
 import { favoriteKey, listFavoritesForBackup } from '@/db/favorites';
 import { listServingsForBackup } from '@/db/servings';
+import { listWeightsForBackup } from '@/db/weights';
 import { foodKey as servingKey } from '@/lib/food-key';
 import { getGoals, saveGoals } from '@/db/goals';
 import { getUserDb } from '@/db/user';
@@ -30,6 +32,8 @@ export async function buildBackup(): Promise<Backup> {
     custom_foods: customFoods,
     favorites: await listFavoritesForBackup(),
     servings: await listServingsForBackup(),
+    weights: await listWeightsForBackup(),
+    achievements: await listAchievementsForBackup(),
     entries,
     goals: await getGoals(),
   };
@@ -40,6 +44,8 @@ export type ImportSummary = {
   skippedFoods: number;
   addedFavorites: number;
   addedServings: number;
+  addedWeights: number;
+  addedAchievements: number;
   addedEntries: number;
   skippedEntries: number;
   goalsReplaced: boolean;
@@ -57,7 +63,7 @@ const entryKey = (e: EntryInput) =>
 export async function importBackup(backup: Backup): Promise<ImportSummary> {
   const db = getUserDb();
   const summary: ImportSummary = {
-    addedFoods: 0, skippedFoods: 0, addedFavorites: 0, addedServings: 0, addedEntries: 0, skippedEntries: 0, goalsReplaced: false,
+    addedFoods: 0, skippedFoods: 0, addedFavorites: 0, addedServings: 0, addedWeights: 0, addedAchievements: 0, addedEntries: 0, skippedEntries: 0, goalsReplaced: false,
   };
 
   await db.withTransactionAsync(async () => {
@@ -98,6 +104,18 @@ export async function importBackup(backup: Backup): Promise<ImportSummary> {
         [servingKey(sv), sv.source, sv.name, sv.brand, sv.grams, sv.label],
       );
       summary.addedServings += result.changes;
+    }
+
+    // Un peso ya registrado ese día se respeta (INSERT OR IGNORE): no se pisa con el de la copia
+    for (const w of backup.weights) {
+      const result = await db.runAsync('INSERT OR IGNORE INTO weights (date, kg) VALUES (?, ?)', [w.date, w.kg]);
+      summary.addedWeights += result.changes;
+    }
+
+    // Un logro que ya tenías conserva su fecha original
+    for (const a of backup.achievements) {
+      const result = await db.runAsync('INSERT OR IGNORE INTO achievements (id, unlocked_on) VALUES (?, ?)', [a.id, a.unlocked_on]);
+      summary.addedAchievements += result.changes;
     }
 
     const existingEntries = await db.getAllAsync<EntryInput>(

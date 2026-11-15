@@ -28,10 +28,12 @@ type Props = {
   date: string;
   /** Cabecera opcional que va encima de la tarjeta de calorías */
   header?: ReactNode;
+  /** Se llama cada vez que el día se carga o recarga (debe ser estable, p. ej. con useCallback) */
+  onLoaded?: () => void;
 };
 
 /** Resumen de un día: calorías frente al objetivo, macros y las cinco franjas con sus alimentos. */
-export function DayView({ date, header }: Props) {
+export function DayView({ date, header, onLoaded }: Props) {
   const theme = useTheme();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [goals, setGoals] = useState<Goals | null>(null);
@@ -43,7 +45,8 @@ export function DayView({ date, header }: Props) {
   const load = useCallback(async () => {
     setEntries(await getEntries(date));
     setGoals(await getGoals());
-  }, [date]);
+    onLoaded?.();
+  }, [date, onLoaded]);
 
   // Recarga cada vez que se abre la pantalla (por si se ha añadido algo desde Buscar)
   useFocusEffect(
@@ -103,7 +106,7 @@ export function DayView({ date, header }: Props) {
             ) : (
               <>
                 <MacroPills {...total} textColor="#ffffff" />
-                <Pressable onPress={() => router.navigate('/goals')}>
+                <Pressable onPress={() => router.navigate('/progress/goals')}>
                   <ThemedText type="smallBold" style={styles.link}>
                     Define tus objetivos →
                   </ThemedText>

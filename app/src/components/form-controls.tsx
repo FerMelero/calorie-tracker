@@ -40,6 +40,45 @@ export function Chips<T extends string>({ options, value, onChange }: ChipsProps
   );
 }
 
+type SegmentedProps<T extends string> = {
+  options: { key: T; label: string }[];
+  value: T;
+  onChange: (key: T) => void;
+};
+
+/**
+ * Selector de ancho completo con las opciones a partes iguales. A diferencia de Chips, el texto de
+ * cada opción se encoge si no cabe, en lugar de cortarse.
+ */
+export function Segmented<T extends string>({ options, value, onChange }: SegmentedProps<T>) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.segmentedTrack, { backgroundColor: theme.backgroundElement }]} accessibilityRole="tablist">
+      {options.map((o) => {
+        const selected = o.key === value;
+        return (
+          <Pressable
+            key={o.key}
+            onPress={() => onChange(o.key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            style={[styles.segment, selected && { backgroundColor: Accent }]}>
+            {/* Una sola línea que se encoge si hace falta (hasta un 70 %): así el texto nunca se corta ni se sale */}
+            <ThemedText
+              type="smallBold"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+              style={[styles.segmentText, { color: selected ? '#ffffff' : theme.text }]}>
+              {o.label}
+            </ThemedText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 type FieldProps = {
   label: string;
   value: string;
@@ -137,6 +176,9 @@ export function Stepper({ label, valueText, onMinus, onPlus, hint }: StepperProp
 }
 
 const styles = StyleSheet.create({
+  segmentedTrack: { flexDirection: 'row', borderRadius: 16, padding: 4, gap: 4 },
+  segment: { flex: 1, minHeight: 44, borderRadius: 12, paddingHorizontal: Spacing.two, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
+  segmentText: { textAlign: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   chip: { borderRadius: 99, paddingHorizontal: Spacing.three, paddingVertical: 10, boxShadow: '0 1px 6px rgba(0, 0, 0, 0.05)' },
   field: { flex: 1, minWidth: 100, gap: Spacing.one },

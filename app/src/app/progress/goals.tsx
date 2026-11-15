@@ -2,16 +2,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { KeyboardAwareScrollView } from '@/components/keyboard-aware-scroll-view';
-import { Chips, NumberField, Stepper } from '@/components/form-controls';
+import { Chips, NumberField, Segmented, Stepper } from '@/components/form-controls';
 import { MacroPills } from '@/components/macro-pills';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentGradient, Spacing } from '@/constants/theme';
 import { getGoals, saveGoals } from '@/db/goals';
+import { todayISO } from '@/db/user';
+import { getLatestWeight, setWeight } from '@/db/weights';
+import { relativeDayLabel } from '@/lib/dates';
+import { formatNumber } from '@/lib/serving';
 import {
   ACTIVITY_OPTIONS,
   calculateGoals,
@@ -61,16 +64,21 @@ export default function GoalsScreen() {
   const [fatText, setFatText] = useState('');
 
   const [message, setMessage] = useState<string | null>(null);
+  // Último peso registrado (en Progreso o aquí): el peso de estos objetivos es el mismo dato
+  const [latest, setLatest] = useState<{ date: string; kg: number } | null>(null);
 
   // Carga lo guardado cada vez que se abre la pestaña
   useFocusEffect(
     useCallback(() => {
-      getGoals().then((g) => {
+      Promise.all([getGoals(), getLatestWeight()]).then(([g, lastWeight]) => {
+        setLatest(lastWeight);
+        // Si ya hay un peso registrado, ese es el que se usa; si no, el que se guardó con los objetivos
+        if (lastWeight) setWeightText(String(lastWeight.kg));
         if (!g) return;
         setMode(g.mode);
         if (g.sex) setSex(g.sex);
         if (g.age !== null) setAgeText(String(g.age));
-        if (g.weight_kg !== null) setWeightText(String(g.weight_kg));
+        if (!lastWeight && g.weight_kg !== null) setWeightText(String(g.weight_kg));
         if (g.height_cm !== null) setHeightText(String(g.height_cm));
         if (g.activity) setActivity(g.activity);
         if (g.objective) setObjective(g.objective);
@@ -117,6 +125,12 @@ export default function GoalsScreen() {
 
   async function save() {
     if (mode === 'auto' && result) {
+      // El peso de aquí cuenta como el peso de hoy, para no pedirlo dos veces (Progreso lo ve igual)
+      const recorded = Math.round(weight! * 10) / 10;
+      if (latest === null || latest.kg !== recorded) {
+        await setWeight(todayISO(), recorded);
+        setLatest({ date: todayISO(), kg: recorded });
+      }
       await saveGoals({
         mode, sex, age, weight_kg: weight, height_cm: height, activity, objective,
         adjust_pct: objectiveRange(objective) ? adjustPercent : 0,
@@ -143,19 +157,16 @@ export default function GoalsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+      <>
         <KeyboardAwareScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets>
-          <View>
-            <ThemedText type="subtitle">Objetivos</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              Se guardan en este móvil. Aquí no hay cuentas.
-            </ThemedText>
-          </View>
+          <ThemedText type="small" themeColor="textSecondary">
+            Se guardan en este móvil. Aquí no hay cuentas.
+          </ThemedText>
 
-          <Chips options={MODE_OPTIONS} value={mode} onChange={(m) => { setMode(m); setMessage(null); }} />
+          <Segmented options={MODE_OPTIONS} value={mode} onChange={(m) => { setMode(m); setMessage(null); }} />
 
           {mode === 'auto' ? (
             <>
@@ -166,6 +177,11 @@ export default function GoalsScreen() {
                   <NumberField label="Peso" value={weightText} onChangeText={setWeightText} unit="kg" />
                   <NumberField label="Altura" value={heightText} onChangeText={setHeightText} unit="cm" />
                 </View>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {latest
+                    ? `Tu peso se toma de tu último registro (${formatNumber(latest.kg, 1)} kg, ${relativeDayLabel(latest.date, todayISO()).toLowerCase()}). Si lo cambias aquí, se registra también como tu peso de hoy.`
+                    : 'Al guardar, este peso se registra también como tu peso de hoy, y lo verás en Progreso.'}
+                </ThemedText>
               </Section>
 
               <Section title="Actividad física">
@@ -255,7 +271,7 @@ export default function GoalsScreen() {
             </ThemedText>
           ) : null}
         </KeyboardAwareScrollView>
-      </SafeAreaView>
+      </>
     </ThemedView>
   );
 }
@@ -271,7 +287,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  safeArea: { flex: 1 },
   content: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },
   section: { gap: Spacing.two },
   sectionTitle: { fontSize: 18, fontWeight: 700 },

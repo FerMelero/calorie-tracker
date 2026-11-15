@@ -39,7 +39,7 @@ export type Entry = {
   salt: number | null;
 };
 
-const USER_DB_VERSION = 8;
+const USER_DB_VERSION = 9;
 
 let db: SQLiteDatabase | null = null;
 
@@ -175,6 +175,20 @@ function migrate(database: SQLiteDatabase) {
       CREATE TABLE weights (
         date TEXT PRIMARY KEY,
         kg   REAL NOT NULL
+      );
+    `);
+  }
+  if (current < 9) {
+    database.execSync(`
+      -- Logros desbloqueados y el día en que se consiguieron
+      CREATE TABLE achievements (
+        id          TEXT PRIMARY KEY,
+        unlocked_on TEXT NOT NULL
+      );
+      -- Ajustes sencillos clave/valor (por ahora, solo si se muestran rachas y logros)
+      CREATE TABLE settings (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
       );
     `);
   }

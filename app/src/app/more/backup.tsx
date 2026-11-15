@@ -97,7 +97,7 @@ export default function BackupScreen() {
               try {
                 const s = await importBackup(data);
                 setMessage(
-                  `Importado: ${s.addedEntries} registros, ${s.addedFoods} alimentos propios y ${s.addedFavorites} favoritos, ${s.addedServings} raciones y ${s.addedWeights} pesos nuevos` +
+                  `Importado: ${s.addedEntries} registros, ${s.addedFoods} alimentos propios y ${s.addedFavorites} favoritos, ${s.addedServings} raciones y ${s.addedWeights} pesos y ${s.addedAchievements} logros nuevos` +
                     (s.skippedEntries + s.skippedFoods > 0
                       ? ` (${s.skippedEntries + s.skippedFoods} ya existían).`
                       : '.') +

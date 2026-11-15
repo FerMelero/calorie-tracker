@@ -51,3 +51,14 @@ export function shortDate(iso: string): string {
   const [, m, d] = iso.split('-').map(Number);
   return `${d} ${MONTHS[m - 1]}`;
 }
+
+/** Día de la semana empezando en lunes: 0 = lunes … 6 = domingo. */
+export function weekdayIndex(iso: string): number {
+  const [y, m, d] = iso.split('-').map(Number);
+  return (new Date(y, m - 1, d, 12).getDay() + 6) % 7;
+}
+
+/** El lunes de la semana (lunes a domingo) a la que pertenece esa fecha. */
+export function weekStart(iso: string): string {
+  return addDays(iso, -weekdayIndex(iso));
+}

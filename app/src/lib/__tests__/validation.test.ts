@@ -162,6 +162,33 @@ describe('peso corporal', () => {
   });
 });
 
+describe('logros en la copia de seguridad', () => {
+  it('viajan en la copia y una copia antigua sin el campo sigue valiendo', () => {
+    const r = validateBackup(backup({ achievements: [{ id: 'streak-7', unlocked_on: '2026-11-08' }] }));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.data.achievements).toEqual([{ id: 'streak-7', unlocked_on: '2026-11-08' }]);
+    const antigua = validateBackup(backup());
+    expect(antigua.ok).toBe(true);
+    if (antigua.ok) expect(antigua.data.achievements).toEqual([]);
+  });
+
+  it('acepta ids que esta versión no conoce (logros de versiones futuras)', () => {
+    expect(validateBackup(backup({ achievements: [{ id: 'logro-nuevo', unlocked_on: '2026-11-08' }] })).ok).toBe(true);
+  });
+
+  it('un logro malo hace fallar la copia y dice cuál', () => {
+    const r = validateBackup(backup({ achievements: [{ id: 'a', unlocked_on: '2026-11-08' }, { id: 'b', unlocked_on: '2026-02-30' }, { id: '', unlocked_on: '2026-11-08' }] }));
+    expect(r.ok).toBe(false);
+    const msg = errorsOf(r).join('\n');
+    expect(msg).toContain('achievements[1].unlocked_on');
+    expect(msg).toContain('achievements[2].id');
+  });
+
+  it('una lista que no es lista falla', () => {
+    expect(validateBackup(backup({ achievements: 'x' })).ok).toBe(false);
+  });
+});
+
 describe('validateEntry (registros del diario)', () => {
   it('acepta un registro correcto', () => {
     expect(validateEntry(entry()).ok).toBe(true);

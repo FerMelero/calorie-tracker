@@ -7,6 +7,7 @@ export default function ProgressLayout() {
     <ThemedStack>
       <Stack.Screen name="index" options={{ title: 'Progreso' }} />
       <Stack.Screen name="goals" options={{ title: 'Mis objetivos' }} />
+      <Stack.Screen name="achievements" options={{ title: 'Logros' }} />
     </ThemedStack>
   );
 }

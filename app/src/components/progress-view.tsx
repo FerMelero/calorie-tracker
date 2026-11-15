@@ -7,6 +7,7 @@ import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { Segmented } from '@/components/form-controls';
 import { LineChart } from '@/components/line-chart';
+import { ProgressionCard } from '@/components/progression-card';
 import { MacroBar } from '@/components/macro-bar';
 import { ThemedText } from '@/components/themed-text';
 import { WeightSheet } from '@/components/weight-sheet';
@@ -163,6 +164,8 @@ export function ProgressView() {
             onPress={() => router.push('/progress/goals')}
           />
         </Card>
+
+        <ProgressionCard />
 
         <Segmented options={RANGES} value={range} onChange={setRange} />
 

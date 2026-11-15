@@ -1,12 +1,14 @@
-import { router, type Href } from 'expo-router';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { router, useFocusEffect, type Href } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { openSuggestionMail, SUGGESTIONS_EMAIL } from '@/constants/contact';
-import { Spacing } from '@/constants/theme';
+import { Accent, Spacing } from '@/constants/theme';
+import { getGamificationEnabled, setGamificationEnabled } from '@/db/settings';
 
 const ITEMS: { icon: string; title: string; description: string; href: Href }[] = [
   {
@@ -24,6 +26,18 @@ const ITEMS: { icon: string; title: string; description: string; href: Href }[] 
 ];
 
 export default function MoreScreen() {
+  const [gamification, setGamification] = useState(true);
+  useFocusEffect(
+    useCallback(() => {
+      getGamificationEnabled().then(setGamification);
+    }, []),
+  );
+
+  async function toggleGamification(value: boolean) {
+    setGamification(value);
+    await setGamificationEnabled(value);
+  }
+
   return (
     <ThemedView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -46,6 +60,19 @@ export default function MoreScreen() {
             </Card>
           </Pressable>
         ))}
+
+        <Card>
+          <View style={styles.row}>
+            <View style={styles.text}>
+              <ThemedText type="smallBold">Mostrar rachas y logros</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                La racha de días, el calendario y los logros. Si lo apagas se ocultan y no se calcula nada; tus datos
+                y los logros que ya tenías se conservan.
+              </ThemedText>
+            </View>
+            <Switch value={gamification} onValueChange={toggleGamification} trackColor={{ true: Accent }} />
+          </View>
+        </Card>
 
         {SUGGESTIONS_EMAIL !== '' ? (
           <Card>

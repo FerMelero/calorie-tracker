@@ -75,6 +75,9 @@ export type ServingInput = {
 /** Un peso corporal registrado un día. */
 export type WeightInput = { date: string; kg: number };
 
+/** Un logro desbloqueado y el día en que se consiguió. Los ids desconocidos se aceptan (logros de versiones futuras). */
+export type AchievementInput = { id: string; unlocked_on: string };
+
 /** Alimento favorito: copia de sus valores por 100 g y de dónde venía. */
 export type FavoriteInput = CustomFoodInput & { source: 'db' | 'custom' };
 
@@ -103,6 +106,7 @@ export type Backup = {
   favorites: FavoriteInput[];
   servings: ServingInput[];
   weights: WeightInput[];
+  achievements: AchievementInput[];
   entries: EntryInput[];
   goals: GoalsInput | null;
 };
@@ -265,6 +269,19 @@ export function validateWeight(raw: unknown, path = 'peso'): ValidationResult<We
   return { ok: true, data: { date, kg: round1(kg) } };
 }
 
+export function validateAchievement(raw: unknown, path = 'logro'): ValidationResult<AchievementInput> {
+  const errors: string[] = [];
+  if (!isObj(raw)) return { ok: false, errors: [`${path}: tiene que ser un objeto`] };
+
+  const id = readText(raw.id, `${path}.id`, 1, 60, errors);
+  let unlockedOn: string | null = null;
+  if (typeof raw.unlocked_on === 'string' && isValidISODate(raw.unlocked_on)) unlockedOn = raw.unlocked_on;
+  else errors.push(`${path}.unlocked_on: tiene que ser una fecha real con formato AAAA-MM-DD`);
+
+  if (errors.length > 0 || id === null || unlockedOn === null) return { ok: false, errors };
+  return { ok: true, data: { id, unlocked_on: unlockedOn } };
+}
+
 export function validateServing(raw: unknown, path = 'racion'): ValidationResult<ServingInput> {
   const errors: string[] = [];
   if (!isObj(raw)) return { ok: false, errors: [`${path}: tiene que ser un objeto`] };
@@ -381,6 +398,7 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
   const favorites: FavoriteInput[] = [];
   const servings: ServingInput[] = [];
   const weights: WeightInput[] = [];
+  const achievements: AchievementInput[] = [];
   const entries: EntryInput[] = [];
   let goals: GoalsInput | null = null;
 
@@ -429,6 +447,18 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
     }
   }
 
+  // achievements también es opcional: las copias antiguas no lo traen
+  if (raw.achievements !== undefined && raw.achievements !== null) {
+    if (!Array.isArray(raw.achievements)) errors.push('achievements: tiene que ser una lista');
+    else {
+      raw.achievements.forEach((item, i) => {
+        const r = validateAchievement(item, `achievements[${i}]`);
+        if (r.ok) achievements.push(r.data);
+        else errors.push(...r.errors);
+      });
+    }
+  }
+
   if (!Array.isArray(raw.entries)) errors.push('entries: tiene que ser una lista');
   else {
     raw.entries.forEach((item, i) => {
@@ -456,6 +486,7 @@ export function validateBackup(raw: unknown): ValidationResult<Backup> {
       favorites,
       servings,
       weights,
+      achievements,
       entries,
       goals,
     },
